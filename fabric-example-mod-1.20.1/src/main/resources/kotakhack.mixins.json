@@ -1,0 +1,14 @@
+{
+  "required": true,
+  "package": "faddyy.kotakhack.mixin",
+  "compatibilityLevel": "JAVA_17",
+  "client": [
+    "MixinClientPlayerInteractionManager",
+    "MixinEntity",
+    "MixinEntityRaycast",
+    "MixinClientConnection"
+  ],
+  "injectors": {
+    "defaultRequire": 1
+  }
+}
