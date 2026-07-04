@@ -1,8 +1,6 @@
 -- ============================================================
--- BLOX LOOT ULTIMATE HACK V10.0
--- Tác giả: Tổng hợp từ Drx Hub, XScript, và phân tích game
--- Ngày: 2026
--- Mô tả: Fix toàn bộ lỗi, hoạt động ổn định với game hiện tại
+-- BLOX LOOT ULTIMATE HACK V10.1
+-- Sửa lỗi auto farm: chỉ nhắm quái, không chạy đến NPC nhiệm vụ
 -- ============================================================
 
 if not game:IsLoaded() then game.Loaded:Wait() end
@@ -12,11 +10,7 @@ local playerGui = player:WaitForChild("PlayerGui")
 local userInput = game:GetService("UserInputService")
 local runService = game:GetService("RunService")
 local camera = workspace.CurrentCamera
-local teleportService = game:GetService("TeleportService")
 
--- ============================================================
--- HÀM CẬP NHẬT NHÂN VẬT
--- ============================================================
 local function getChar()
     return player.Character or player.CharacterAdded:Wait()
 end
@@ -41,9 +35,6 @@ local state = {
     hitbox = false,
     multiDamage = false,
     fly = false,
-    teleportLoot = false,
-    speed = 50,
-    jump = 80,
     farmRadius = 50,
     lootRadius = 120,
 }
@@ -57,17 +48,43 @@ local flyBV = nil
 local flyBG = nil
 
 -- ============================================================
--- 1. TÌM QUÁI (CHÍNH XÁC)
+-- HÀM NHẬN DIỆN NPC NHIỆM VỤ (BỎ QUA)
+-- ============================================================
+local function isQuestNPC(model)
+    if not model or not model:IsA("Model") then return false end
+    local name = model.Name:lower()
+    -- Tên chứa các từ khóa NPC nhiệm vụ
+    if name:find("npc") or name:find("quest") or name:find("shop") or name:find("merchant") or name:find("trader") or name:find("vendor") then
+        return true
+    end
+    -- Nếu có ProximityPrompt (thường là tương tác) -> NPC
+    if model:FindFirstChildOfClass("ProximityPrompt") then
+        return true
+    end
+    -- Nếu Humanoid có MaxHealth > 1e6 (gần như bất tử) -> NPC
+    local hum = model:FindFirstChild("Humanoid")
+    if hum and hum.MaxHealth > 999999 then
+        return true
+    end
+    return false
+end
+
+-- ============================================================
+-- HÀM NHẬN DIỆN QUÁI (CÓ THỂ TẤN CÔNG)
 -- ============================================================
 local function isMob(model)
     if not model or not model:IsA("Model") then return false end
+    -- Bỏ qua NPC nhiệm vụ
+    if isQuestNPC(model) then return false end
+    
     local name = model.Name:lower()
-    -- Danh sách tên quái phổ biến trong Blox Loot
-    local mobNames = {"mob", "enemy", "zombie", "skeleton", "goblin", "orc", "slime", "wolf", "bear", "bandit", "boss", "demon", "spider", "bat", "rat", "snake", "troll"}
-    for _, keyword in ipairs(mobNames) do
-        if name:find(keyword) then return true end
+    -- Danh sách tên quái
+    local mobKeywords = {"mob", "enemy", "zombie", "skeleton", "goblin", "orc", "slime", "wolf", "bear", "bandit", "boss", "demon", "spider", "bat", "rat", "snake", "troll", "ghost", "vampire", "werewolf", "golem", "elemental", "fiend", "abomination"}
+    for _, kw in ipairs(mobKeywords) do
+        if name:find(kw) then return true end
     end
-    -- Kiểm tra Humanoid: nếu có máu giới hạn và không phải người chơi
+    
+    -- Kiểm tra Humanoid: nếu có máu hữu hạn (< 1e6) và không phải người chơi
     local hum = model:FindFirstChild("Humanoid")
     if hum and hum.MaxHealth > 0 and hum.MaxHealth < 999999 then
         return true
@@ -75,6 +92,9 @@ local function isMob(model)
     return false
 end
 
+-- ============================================================
+-- TÌM QUÁI GẦN NHẤT (CHỈ QUÁI, KHÔNG NPC)
+-- ============================================================
 local function getClosestMob(radius)
     radius = radius or state.farmRadius
     local closest = nil
@@ -82,15 +102,18 @@ local function getClosestMob(radius)
     local pos = rootPart.Position
     for _, obj in ipairs(workspace:GetDescendants()) do
         if obj:IsA("Model") and obj:FindFirstChild("Humanoid") and obj:FindFirstChild("HumanoidRootPart") then
-            if not game.Players:GetPlayerFromCharacter(obj) and isMob(obj) then
-                local hum = obj:FindFirstChild("Humanoid")
-                if hum and hum.Health > 0 then
-                    local targetRoot = obj:FindFirstChild("HumanoidRootPart")
-                    if targetRoot then
-                        local distSq = (pos - targetRoot.Position).Magnitude^2
-                        if distSq < shortest then
-                            shortest = distSq
-                            closest = obj
+            -- Bỏ qua người chơi
+            if not game.Players:GetPlayerFromCharacter(obj) then
+                if isMob(obj) then   -- chỉ xử lý quái
+                    local hum = obj:FindFirstChild("Humanoid")
+                    if hum and hum.Health > 0 then
+                        local targetRoot = obj:FindFirstChild("HumanoidRootPart")
+                        if targetRoot then
+                            local distSq = (pos - targetRoot.Position).Magnitude^2
+                            if distSq < shortest then
+                                shortest = distSq
+                                closest = obj
+                            end
                         end
                     end
                 end
@@ -101,13 +124,12 @@ local function getClosestMob(radius)
 end
 
 -- ============================================================
--- 2. TÌM LOOT (CHÍNH XÁC)
+-- TÌM LOOT
 -- ============================================================
 local function getLootItems(radius)
     radius = radius or state.lootRadius
     local items = {}
     local pos = rootPart.Position
-    -- Duyệt tất cả Part và Model
     for _, obj in ipairs(workspace:GetDescendants()) do
         if obj:IsA("BasePart") then
             local name = obj.Name:lower()
@@ -134,7 +156,7 @@ local function getLootItems(radius)
 end
 
 -- ============================================================
--- 3. AUTO FARM
+-- AUTO FARM (CHỈ TẤN CÔNG QUÁI)
 -- ============================================================
 local function startAutoFarm()
     if farmLoop then return end
@@ -147,14 +169,12 @@ local function startAutoFarm()
                 humanoid:MoveTo(targetRoot.Position)
                 local dist = (rootPart.Position - targetRoot.Position).Magnitude
                 if dist < 10 then
-                    -- Tấn công bằng tool hoặc remote
                     for _, tool in ipairs(character:GetChildren()) do
                         if tool:IsA("Tool") then
                             tool:Activate()
                             task.wait(0.1)
                         end
                     end
-                    -- Nếu không có tool, gửi remote event (nếu game dùng)
                     local remote = game:GetService("ReplicatedStorage"):FindFirstChild("Attack") or game:GetService("ReplicatedStorage"):FindFirstChild("Combat")
                     if remote then
                         remote:FireServer(target)
@@ -170,7 +190,7 @@ local function stopAutoFarm()
 end
 
 -- ============================================================
--- 4. AUTO LOOT
+-- AUTO LOOT (GIỮ NGUYÊN)
 -- ============================================================
 local function startAutoLoot()
     if lootLoop then return end
@@ -179,21 +199,17 @@ local function startAutoLoot()
         local loots = getLootItems(state.lootRadius)
         for _, loot in ipairs(loots) do
             if loot and loot:IsA("BasePart") then
-                -- Dịch chuyển đến loot
                 rootPart.CFrame = CFrame.new(loot.Position + Vector3.new(0, 2, 0))
                 task.wait(0.1)
-                -- Kích hoạt ProximityPrompt nếu có
                 local prompt = loot.Parent:FindFirstChildOfClass("ProximityPrompt") or loot:FindFirstChildOfClass("ProximityPrompt")
                 if prompt then
                     prompt:InputHoldBegin(player)
                     task.wait(0.2)
                     prompt:InputHoldEnd(player)
                 else
-                    -- Chạm vào loot
                     rootPart.CFrame = CFrame.new(loot.Position + Vector3.new(0, 1, 0))
                     task.wait(0.05)
                 end
-                -- Thoát vòng lặp để tránh lag
                 break
             end
         end
@@ -205,7 +221,7 @@ local function stopAutoLoot()
 end
 
 -- ============================================================
--- 5. HITBOX EXPANSION (TĂNG KÍCH THƯỚC HITBOX CỦA QUÁI)
+-- HITBOX (CHỈ TĂNG HITBOX CỦA QUÁI)
 -- ============================================================
 local function startHitbox()
     if hitboxLoop then return end
@@ -213,7 +229,6 @@ local function startHitbox()
         if not state.hitbox then return end
         for _, obj in ipairs(workspace:GetDescendants()) do
             if obj:IsA("BasePart") and obj.Parent and isMob(obj.Parent) then
-                -- Chỉ tăng hitbox của quái, không tăng tất cả để tránh lag
                 local size = obj.Size
                 obj.Size = Vector3.new(size.X * 3, size.Y * 3, size.Z * 3)
             end
@@ -226,7 +241,7 @@ local function stopHitbox()
 end
 
 -- ============================================================
--- 6. MULTI DAMAGE (TẤN CÔNG NHIỀU LẦN)
+-- MULTI DAMAGE
 -- ============================================================
 local function startMultiDamage()
     if multiLoop then return end
@@ -246,37 +261,29 @@ local function stopMultiDamage()
 end
 
 -- ============================================================
--- 7. FLY (SỬ DỤNG BODYPOSITION + BODYGYRO, DI CHUYỂN MƯỢT)
+-- FLY
 -- ============================================================
 local function startFly()
     if flyConnection then return end
     state.fly = true
-    
     flyBV = Instance.new("BodyVelocity")
     flyBV.MaxForce = Vector3.new(1e9, 1e9, 1e9)
     flyBV.Velocity = Vector3.new(0, 0, 0)
     flyBV.Parent = rootPart
-    
     flyBG = Instance.new("BodyGyro")
     flyBG.MaxTorque = Vector3.new(1e9, 1e9, 1e9)
     flyBG.CFrame = rootPart.CFrame
     flyBG.P = 5000
     flyBG.D = 1000
     flyBG.Parent = rootPart
-    
     local speed = 70
     local cam = camera
-    
     flyConnection = runService.Heartbeat:Connect(function()
-        if not state.fly or not flyBV or not flyBG then
-            stopFly()
-            return
-        end
+        if not state.fly or not flyBV or not flyBG then stopFly() return end
         local forward = cam.CFrame.LookVector
         forward = Vector3.new(forward.X, 0, forward.Z).Unit
         local right = cam.CFrame.RightVector
         right = Vector3.new(right.X, 0, right.Z).Unit
-        
         local move = Vector3.new(0, 0, 0)
         if userInput:IsKeyDown(Enum.KeyCode.W) then move = move + forward end
         if userInput:IsKeyDown(Enum.KeyCode.S) then move = move - forward end
@@ -284,12 +291,7 @@ local function startFly()
         if userInput:IsKeyDown(Enum.KeyCode.D) then move = move + right end
         if userInput:IsKeyDown(Enum.KeyCode.Space) then move = move + Vector3.new(0, 1, 0) end
         if userInput:IsKeyDown(Enum.KeyCode.LeftControl) then move = move - Vector3.new(0, 1, 0) end
-        
-        if move.Magnitude > 0 then
-            flyBV.Velocity = move.Unit * speed
-        else
-            flyBV.Velocity = Vector3.new(0, 0, 0)
-        end
+        if move.Magnitude > 0 then flyBV.Velocity = move.Unit * speed else flyBV.Velocity = Vector3.new(0, 0, 0) end
         flyBG.CFrame = rootPart.CFrame
     end)
 end
@@ -306,7 +308,7 @@ local function toggleFly()
 end
 
 -- ============================================================
--- 8. TELEPORT TO LOOT (DỊCH CHUYỂN ĐẾN VỊ TRÍ LOOT GẦN NHẤT)
+-- TELEPORT LOOT
 -- ============================================================
 local function teleportToLoot()
     local loots = getLootItems(200)
@@ -319,7 +321,7 @@ local function teleportToLoot()
 end
 
 -- ============================================================
--- 9. SET SPEED
+-- SPEED
 -- ============================================================
 local function setSpeed(walk, jump)
     humanoid.WalkSpeed = walk or 50
@@ -327,10 +329,10 @@ local function setSpeed(walk, jump)
 end
 
 -- ============================================================
--- 10. TẠO GUI
+-- GUI
 -- ============================================================
 local gui = Instance.new("ScreenGui")
-gui.Name = "BloxLootV10"
+gui.Name = "BloxLootV101"
 gui.ResetOnSpawn = false
 gui.Parent = playerGui
 
@@ -349,7 +351,7 @@ local title = Instance.new("TextLabel")
 title.Size = UDim2.new(1, 0, 0, 40)
 title.Position = UDim2.new(0, 0, 0, 0)
 title.BackgroundColor3 = Color3.fromRGB(30, 30, 50)
-title.Text = "BLOX LOOT HUB V10"
+title.Text = "BLOX LOOT HUB V10.1"
 title.TextColor3 = Color3.fromRGB(255, 255, 255)
 title.TextScaled = true
 title.Parent = frame
@@ -363,13 +365,10 @@ local function createButton(text, yPos, callback)
     btn.TextColor3 = Color3.fromRGB(255, 255, 255)
     btn.TextScaled = true
     btn.Parent = frame
-    btn.MouseButton1Click:Connect(function()
-        callback(btn)
-    end)
+    btn.MouseButton1Click:Connect(function() callback(btn) end)
     return btn
 end
 
--- Các nút
 local btnFarm = createButton("Auto Farm: OFF", 0.08, function(btn)
     state.autoFarm = not state.autoFarm
     btn.Text = "Auto Farm: " .. (state.autoFarm and "ON" or "OFF")
@@ -415,7 +414,6 @@ local btnToggleMenu = createButton("Hide Menu", 0.71, function(btn)
     btn.Text = frame.Visible and "Hide Menu" or "Show Menu"
 end)
 
--- Phím tắt F1
 userInput.InputBegan:Connect(function(input, processed)
     if processed then return end
     if input.KeyCode == Enum.KeyCode.F1 then
@@ -424,16 +422,9 @@ userInput.InputBegan:Connect(function(input, processed)
     end
 end)
 
--- ============================================================
--- XỬ LÝ RESPAWN
--- ============================================================
-player.CharacterAdded:Connect(function(newChar)
+player.CharacterAdded:Connect(function()
     updateCharacter()
     if state.fly then stopFly() end
 end)
 
--- ============================================================
--- THÔNG BÁO
--- ============================================================
-print("Blox Loot V10 loaded. Press F1 to toggle menu.")
-print("Đã fix toàn bộ lỗi: farm, loot, hitbox, fly, teleport.")
+print("Blox Loot V10.1 loaded. Auto Farm now targets ONLY mobs, ignores quest NPCs.")
