@@ -1,6 +1,6 @@
 -- =============================================
 -- BLOX LOOT ULTIMATE HACK (V9.0 - FIXED ALL)
--- Fix: phân biệt NPC nhiệm vụ & quái, auto loot teleport, fly di chuyển, tầm nhìn rộng
+-- Fix: phân biệt NPC nhiệm vụ & quái, auto loot teleport, fly di chuyển, tầm nhìn 100
 -- =============================================
 if not game:IsLoaded() then game.Loaded:Wait() end
 
@@ -67,19 +67,15 @@ player.CharacterAdded:Connect(updateCharacter)
 -- 1. TÌM NPC QUÁI (chỉ quái, không bao gồm NPC nhiệm vụ)
 -- =============================================
 local function isQuestNPC(model)
-    -- Kiểm tra nếu là NPC nhiệm vụ
     if not model or not model:IsA("Model") then return false end
     local name = model.Name:lower()
-    -- NPC nhiệm vụ thường có tên chứa các từ này
     if name:find("npc") or name:find("quest") or name:find("shop") or name:find("merchant") or name:find("trader") then
         return true
     end
-    -- NPC nhiệm vụ thường không có thanh máu hoặc máu vô hạn
     local hum = model:FindFirstChild("Humanoid")
     if hum and hum.MaxHealth > 999999 then
         return true
     end
-    -- Kiểm tra nếu có ProximityPrompt (thường là NPC tương tác)
     if model:FindFirstChildOfClass("ProximityPrompt") then
         return true
     end
@@ -87,15 +83,12 @@ local function isQuestNPC(model)
 end
 
 local function isMob(model)
-    -- Kiểm tra nếu là quái (có thể tấn công)
     if not model or not model:IsA("Model") then return false end
     if isQuestNPC(model) then return false end
     local name = model.Name:lower()
-    -- Quái thường có tên chứa các từ này
     if name:find("mob") or name:find("enemy") or name:find("boss") or name:find("zombie") or name:find("skeleton") or name:find("goblin") or name:find("orc") or name:find("slime") or name:find("wolf") or name:find("bear") or name:find("bandit") then
         return true
     end
-    -- Kiểm tra Humanoid: quái có máu giới hạn và có thể bị tấn công
     local hum = model:FindFirstChild("Humanoid")
     if hum and hum.MaxHealth > 0 and hum.MaxHealth < 999999 then
         return true
@@ -110,9 +103,7 @@ local function getClosestMob(radius)
     local pos = rootPart.Position
     for _, obj in ipairs(workspace:GetDescendants()) do
         if obj:IsA("Model") and obj:FindFirstChild("Humanoid") and obj:FindFirstChild("HumanoidRootPart") then
-            -- Bỏ qua người chơi
             if not game.Players:GetPlayerFromCharacter(obj) then
-                -- Chỉ chọn quái, bỏ qua NPC nhiệm vụ
                 if isMob(obj) then
                     local hum = obj:FindFirstChild("Humanoid")
                     if hum and hum.Health > 0 then
@@ -139,7 +130,6 @@ local function getLootItems(radius)
     radius = radius or state.collectRadius
     local items = {}
     local pos = rootPart.Position
-    -- Tìm các Model có tên chứa "Loot", "Chest", "Box", "Drop", "Item"
     for _, obj in ipairs(workspace:GetDescendants()) do
         if obj:IsA("Model") then
             local name = obj.Name:lower()
@@ -153,7 +143,6 @@ local function getLootItems(radius)
                 end
             end
         end
-        -- Nếu không tìm thấy Model, thử tìm Part có tên chứa "loot"
         if #items == 0 and obj:IsA("BasePart") then
             local name = obj.Name:lower()
             if name:find("loot") or name:find("chest") or name:find("drop") or name:find("coin") then
@@ -180,7 +169,6 @@ local function startAutoFarm()
             humanoid:MoveTo(targetRoot.Position)
             local dist = (rootPart.Position - targetRoot.Position).Magnitude
             if dist < 10 then
-                -- Tấn công bằng tất cả tool
                 for _, tool in ipairs(character:GetChildren()) do
                     if tool:IsA("Tool") then
                         tool:Activate()
@@ -208,30 +196,24 @@ local function startAutoCollect()
             if loot:IsA("Model") then
                 local root = loot:FindFirstChild("HumanoidRootPart") or loot:FindFirstChild("RootPart") or loot:FindFirstChildOfClass("BasePart")
                 if root then
-                    local dist = (rootPart.Position - root.Position).Magnitude
-                    -- Chế độ Teleport: dịch chuyển đến loot
                     if state.collectMode == "Teleport" then
                         rootPart.CFrame = CFrame.new(root.Position + Vector3.new(0, 2, 0))
                         task.wait(0.1)
                     else
-                        -- Chế độ Near: di chuyển đến gần
                         humanoid:MoveTo(root.Position)
                         task.wait(0.1)
                     end
-                    -- Kích hoạt ProximityPrompt nếu có
                     local prompt = loot:FindFirstChildOfClass("ProximityPrompt")
                     if prompt then
                         prompt:InputHoldBegin(player)
                         task.wait(0.2)
                         prompt:InputHoldEnd(player)
                     else
-                        -- Nếu không có prompt, thử chạm vào loot
                         rootPart.CFrame = CFrame.new(root.Position + Vector3.new(0, 1, 0))
                         task.wait(0.05)
                     end
                 end
             elseif loot:IsA("BasePart") then
-                local dist = (rootPart.Position - loot.Position).Magnitude
                 if state.collectMode == "Teleport" then
                     rootPart.CFrame = CFrame.new(loot.Position + Vector3.new(0, 2, 0))
                     task.wait(0.1)
@@ -297,7 +279,6 @@ local function startFly()
     if flyConnection then return end
     state.fly = true
     
-    -- Tạo BodyPosition để giữ vị trí
     flyBodyPosition = Instance.new("BodyPosition")
     flyBodyPosition.MaxForce = Vector3.new(1e9, 1e9, 1e9)
     flyBodyPosition.P = 5000
@@ -305,7 +286,6 @@ local function startFly()
     flyBodyPosition.Position = rootPart.Position
     flyBodyPosition.Parent = rootPart
     
-    -- Tạo BodyGyro để giữ hướng
     flyBodyGyro = Instance.new("BodyGyro")
     flyBodyGyro.MaxTorque = Vector3.new(1e9, 1e9, 1e9)
     flyBodyGyro.CFrame = rootPart.CFrame
@@ -321,7 +301,6 @@ local function startFly()
             stopFly()
             return
         end
-        -- Lấy hướng camera
         local forward = cam.CFrame.LookVector
         forward = Vector3.new(forward.X, 0, forward.Z).Unit
         local right = cam.CFrame.RightVector
@@ -460,7 +439,6 @@ end)
 local btnCollectMode = createButton("Mode: Teleport", 0.26, function(btn)
     state.collectMode = (state.collectMode == "Teleport" and "Near" or "Teleport")
     btn.Text = "Mode: " .. state.collectMode
-    -- Cập nhật lại nút Auto Collect nếu đang bật
     if state.autoCollect then
         btnCollect.Text = "Auto Collect: " .. state.collectMode .. " ON"
     end
