@@ -1,0 +1,387 @@
+-- =============================================
+-- BLOX LOOT - SCRIPT HACK TỔNG HỢP
+-- Phiên bản: V7 / V11
+-- Tác giả: Tổng hợp từ nhiều nguồn (DRX HUB, XSCRIPT, cộng đồng)
+-- Ngày cập nhật: 2026
+-- =============================================
+
+-- KIỂM TRA MÔI TRƯỜNG
+if not game:IsLoaded() then game.Loaded:Wait() end
+
+local player = game.Players.LocalPlayer
+local character = player.Character or player.CharacterAdded:Wait()
+local humanoid = character:WaitForChild("Humanoid")
+local rootPart = character:WaitForChild("HumanoidRootPart")
+
+-- =============================================
+-- 1. HÀM TIỆN ÍCH
+-- =============================================
+local function getClosestMob(radius)
+    local closest = nil
+    local shortest = radius or 9999
+    for _, obj in pairs(workspace:GetDescendants()) do
+        if obj:IsA("Model") and obj:FindFirstChild("Humanoid") and obj:FindFirstChild("HumanoidRootPart") then
+            if obj.Humanoid.Health > 0 and obj ~= character then
+                local dist = (rootPart.Position - obj.HumanoidRootPart.Position).Magnitude
+                if dist < shortest then
+                    shortest = dist
+                    closest = obj
+                end
+            end
+        end
+    end
+    return closest
+end
+
+local function getLootItems(radius)
+    local items = {}
+    for _, obj in pairs(workspace:GetDescendants()) do
+        if obj:IsA("Part") and obj.Name:lower():find("loot") then
+            local dist = (rootPart.Position - obj.Position).Magnitude
+            if dist < (radius or 50) then
+                table.insert(items, obj)
+            end
+        end
+    end
+    return items
+end
+
+-- =============================================
+-- 2. AUTO FARM (TỰ ĐỘNG ĐÁNH QUÁI)
+-- =============================================
+local autoFarmEnabled = false
+local farmRadius = 30
+local attackCooldown = 0.5
+
+local function autoFarm()
+    while autoFarmEnabled do
+        task.wait(0.1)
+        local target = getClosestMob(farmRadius)
+        if target and target:FindFirstChild("HumanoidRootPart") then
+            -- Di chuyển đến mục tiêu
+            humanoid:MoveTo(target.HumanoidRootPart.Position)
+            
+            -- Kiểm tra khoảng cách để tấn công
+            local dist = (rootPart.Position - target.HumanoidRootPart.Position).Magnitude
+            if dist < 8 then
+                -- Sử dụng tool hiện tại để tấn công
+                for _, tool in pairs(character:GetChildren()) do
+                    if tool:IsA("Tool") then
+                        tool:Activate()
+                        task.wait(attackCooldown)
+                    end
+                end
+            end
+        end
+    end
+end
+
+-- =============================================
+-- 3. AUTO COLLECT (TỰ ĐỘNG NHẶT ĐỒ)
+-- =============================================
+local autoCollectEnabled = false
+local collectRadius = 40
+
+local function autoCollect()
+    while autoCollectEnabled do
+        task.wait(0.3)
+        local loots = getLootItems(collectRadius)
+        for _, loot in pairs(loots) do
+            if loot and loot:IsA("Part") then
+                -- Di chuyển đến vị trí loot
+                humanoid:MoveTo(loot.Position)
+                task.wait(0.1)
+                -- Chạm vào loot để nhặt
+                rootPart.CFrame = CFrame.new(loot.Position)
+                task.wait(0.05)
+            end
+        end
+    end
+end
+
+-- =============================================
+-- 4. HITBOX EXPANSION (MỞ RỘNG HITBOX)
+-- =============================================
+local hitboxExpansionEnabled = false
+local hitboxMultiplier = 3
+
+local function expandHitbox()
+    while hitboxExpansionEnabled do
+        task.wait(0.5)
+        for _, obj in pairs(workspace:GetDescendants()) do
+            if obj:IsA("Part") and obj.Name:lower():find("hitbox") or obj.Name:lower():find("handle") then
+                local size = obj.Size
+                obj.Size = Vector3.new(size.X * hitboxMultiplier, size.Y * hitboxMultiplier, size.Z * hitboxMultiplier)
+            end
+        end
+    end
+end
+
+-- =============================================
+-- 5. MULTI DAMAGE (SÁT THƯƠNG NHIỀU VŨ KHÍ)
+-- =============================================
+local multiDamageEnabled = false
+
+local function multiDamage()
+    while multiDamageEnabled do
+        task.wait(0.2)
+        -- Kích hoạt tất cả tool trong kho đồ để gây sát thương nhiều lần
+        for _, tool in pairs(character:GetChildren()) do
+            if tool:IsA("Tool") then
+                tool:Activate()
+                task.wait(0.1)
+            end
+        end
+    end
+end
+
+-- =============================================
+-- 6. WALKSPEED & JUMP POWER (TĂNG TỐC ĐỘ)
+-- =============================================
+local function setSpeed(walkSpeed, jumpPower)
+    humanoid.WalkSpeed = walkSpeed or 50
+    humanoid.JumpPower = jumpPower or 80
+end
+
+-- =============================================
+-- 7. FLY (BAY)
+-- =============================================
+local flyEnabled = false
+local flySpeed = 50
+local bodyVelocity = nil
+local bodyGyro = nil
+
+local function toggleFly()
+    flyEnabled = not flyEnabled
+    if flyEnabled then
+        bodyVelocity = Instance.new("BodyVelocity")
+        bodyVelocity.MaxForce = Vector3.new(1e9, 1e9, 1e9)
+        bodyVelocity.Velocity = Vector3.new(0, 0, 0)
+        bodyVelocity.Parent = rootPart
+        
+        bodyGyro = Instance.new("BodyGyro")
+        bodyGyro.MaxTorque = Vector3.new(1e9, 1e9, 1e9)
+        bodyGyro.CFrame = rootPart.CFrame
+        bodyGyro.Parent = rootPart
+        
+        game:GetService("RunService").RenderStepped:Connect(function()
+            if flyEnabled and bodyVelocity and bodyGyro then
+                local moveDirection = Vector3.new(0, 0, 0)
+                if game:GetService("UserInputService"):IsKeyDown(Enum.KeyCode.W) then
+                    moveDirection = moveDirection + rootPart.CFrame.LookVector
+                end
+                if game:GetService("UserInputService"):IsKeyDown(Enum.KeyCode.S) then
+                    moveDirection = moveDirection - rootPart.CFrame.LookVector
+                end
+                if game:GetService("UserInputService"):IsKeyDown(Enum.KeyCode.A) then
+                    moveDirection = moveDirection - rootPart.CFrame.RightVector
+                end
+                if game:GetService("UserInputService"):IsKeyDown(Enum.KeyCode.D) then
+                    moveDirection = moveDirection + rootPart.CFrame.RightVector
+                end
+                if game:GetService("UserInputService"):IsKeyDown(Enum.KeyCode.Space) then
+                    moveDirection = moveDirection + Vector3.new(0, 1, 0)
+                end
+                if game:GetService("UserInputService"):IsKeyDown(Enum.KeyCode.LeftControl) then
+                    moveDirection = moveDirection - Vector3.new(0, 1, 0)
+                end
+                if moveDirection.Magnitude > 0 then
+                    moveDirection = moveDirection.Unit * flySpeed
+                end
+                bodyVelocity.Velocity = moveDirection
+                bodyGyro.CFrame = rootPart.CFrame
+            end
+        end)
+    else
+        if bodyVelocity then bodyVelocity:Destroy() end
+        if bodyGyro then bodyGyro:Destroy() end
+    end
+end
+
+-- =============================================
+-- 8. DESYNC BODY (TÀNG HÌNH)
+-- =============================================
+local desyncEnabled = false
+
+local function toggleDesync()
+    desyncEnabled = not desyncEnabled
+    if desyncEnabled then
+        character:BreakJoints()
+        task.wait(0.1)
+        character = player.CharacterAdded:Wait()
+        humanoid = character:WaitForChild("Humanoid")
+        rootPart = character:WaitForChild("HumanoidRootPart")
+    end
+end
+
+-- =============================================
+-- 9. TELEPORT LOOT (DỊCH CHUYỂN ĐẾN LOOT)
+-- =============================================
+local function teleportToLoot()
+    local loots = getLootItems(200)
+    if #loots > 0 then
+        rootPart.CFrame = CFrame.new(loots[1].Position + Vector3.new(0, 3, 0))
+    end
+end
+
+-- =============================================
+-- 10. GUI ĐIỀU KHIỂN
+-- =============================================
+local screenGui = Instance.new("ScreenGui")
+screenGui.Parent = player:WaitForChild("PlayerGui")
+
+local mainFrame = Instance.new("Frame")
+mainFrame.Size = UDim2.new(0, 300, 0, 400)
+mainFrame.Position = UDim2.new(0.5, -150, 0.5, -200)
+mainFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 30)
+mainFrame.BackgroundTransparency = 0.2
+mainFrame.BorderSizePixel = 0
+mainFrame.Active = true
+mainFrame.Draggable = true
+mainFrame.Parent = screenGui
+
+-- Tiêu đề
+local title = Instance.new("TextLabel")
+title.Size = UDim2.new(1, 0, 0, 30)
+title.Position = UDim2.new(0, 0, 0, 0)
+title.BackgroundColor3 = Color3.fromRGB(40, 40, 60)
+title.Text = "BLOX LOOT HUB v2.0"
+title.TextColor3 = Color3.fromRGB(255, 255, 255)
+title.TextScaled = true
+title.Parent = mainFrame
+
+-- Nút Auto Farm
+local btnAutoFarm = Instance.new("TextButton")
+btnAutoFarm.Size = UDim2.new(0.9, 0, 0, 30)
+btnAutoFarm.Position = UDim2.new(0.05, 0, 0.1, 5)
+btnAutoFarm.BackgroundColor3 = Color3.fromRGB(60, 60, 80)
+btnAutoFarm.Text = "Auto Farm: OFF"
+btnAutoFarm.TextColor3 = Color3.fromRGB(255, 255, 255)
+btnAutoFarm.TextScaled = true
+btnAutoFarm.Parent = mainFrame
+btnAutoFarm.MouseButton1Click:Connect(function()
+    autoFarmEnabled = not autoFarmEnabled
+    btnAutoFarm.Text = "Auto Farm: " .. (autoFarmEnabled and "ON" or "OFF")
+    if autoFarmEnabled then
+        task.spawn(autoFarm)
+    end
+end)
+
+-- Nút Auto Collect
+local btnAutoCollect = Instance.new("TextButton")
+btnAutoCollect.Size = UDim2.new(0.9, 0, 0, 30)
+btnAutoCollect.Position = UDim2.new(0.05, 0, 0.2, 5)
+btnAutoCollect.BackgroundColor3 = Color3.fromRGB(60, 60, 80)
+btnAutoCollect.Text = "Auto Collect: OFF"
+btnAutoCollect.TextColor3 = Color3.fromRGB(255, 255, 255)
+btnAutoCollect.TextScaled = true
+btnAutoCollect.Parent = mainFrame
+btnAutoCollect.MouseButton1Click:Connect(function()
+    autoCollectEnabled = not autoCollectEnabled
+    btnAutoCollect.Text = "Auto Collect: " .. (autoCollectEnabled and "ON" or "OFF")
+    if autoCollectEnabled then
+        task.spawn(autoCollect)
+    end
+end)
+
+-- Nút Hitbox Expansion
+local btnHitbox = Instance.new("TextButton")
+btnHitbox.Size = UDim2.new(0.9, 0, 0, 30)
+btnHitbox.Position = UDim2.new(0.05, 0, 0.3, 5)
+btnHitbox.BackgroundColor3 = Color3.fromRGB(60, 60, 80)
+btnHitbox.Text = "Hitbox x3: OFF"
+btnHitbox.TextColor3 = Color3.fromRGB(255, 255, 255)
+btnHitbox.TextScaled = true
+btnHitbox.Parent = mainFrame
+btnHitbox.MouseButton1Click:Connect(function()
+    hitboxExpansionEnabled = not hitboxExpansionEnabled
+    btnHitbox.Text = "Hitbox x3: " .. (hitboxExpansionEnabled and "ON" or "OFF")
+    if hitboxExpansionEnabled then
+        task.spawn(expandHitbox)
+    end
+end)
+
+-- Nút Multi Damage
+local btnMultiDamage = Instance.new("TextButton")
+btnMultiDamage.Size = UDim2.new(0.9, 0, 0, 30)
+btnMultiDamage.Position = UDim2.new(0.05, 0, 0.4, 5)
+btnMultiDamage.BackgroundColor3 = Color3.fromRGB(60, 60, 80)
+btnMultiDamage.Text = "Multi Damage: OFF"
+btnMultiDamage.TextColor3 = Color3.fromRGB(255, 255, 255)
+btnMultiDamage.TextScaled = true
+btnMultiDamage.Parent = mainFrame
+btnMultiDamage.MouseButton1Click:Connect(function()
+    multiDamageEnabled = not multiDamageEnabled
+    btnMultiDamage.Text = "Multi Damage: " .. (multiDamageEnabled and "ON" or "OFF")
+    if multiDamageEnabled then
+        task.spawn(multiDamage)
+    end
+end)
+
+-- Nút Fly
+local btnFly = Instance.new("TextButton")
+btnFly.Size = UDim2.new(0.9, 0, 0, 30)
+btnFly.Position = UDim2.new(0.05, 0, 0.5, 5)
+btnFly.BackgroundColor3 = Color3.fromRGB(60, 60, 80)
+btnFly.Text = "Fly: OFF"
+btnFly.TextColor3 = Color3.fromRGB(255, 255, 255)
+btnFly.TextScaled = true
+btnFly.Parent = mainFrame
+btnFly.MouseButton1Click:Connect(function()
+    toggleFly()
+    btnFly.Text = "Fly: " .. (flyEnabled and "ON" or "OFF")
+end)
+
+-- Nút Desync (Tàng hình)
+local btnDesync = Instance.new("TextButton")
+btnDesync.Size = UDim2.new(0.9, 0, 0, 30)
+btnDesync.Position = UDim2.new(0.05, 0, 0.6, 5)
+btnDesync.BackgroundColor3 = Color3.fromRGB(60, 60, 80)
+btnDesync.Text = "Desync Body: OFF"
+btnDesync.TextColor3 = Color3.fromRGB(255, 255, 255)
+btnDesync.TextScaled = true
+btnDesync.Parent = mainFrame
+btnDesync.MouseButton1Click:Connect(function()
+    toggleDesync()
+    btnDesync.Text = "Desync Body: " .. (desyncEnabled and "ON" or "OFF")
+end)
+
+-- Nút Teleport Loot
+local btnTeleportLoot = Instance.new("TextButton")
+btnTeleportLoot.Size = UDim2.new(0.9, 0, 0, 30)
+btnTeleportLoot.Position = UDim2.new(0.05, 0, 0.7, 5)
+btnTeleportLoot.BackgroundColor3 = Color3.fromRGB(60, 60, 80)
+btnTeleportLoot.Text = "Teleport Loot"
+btnTeleportLoot.TextColor3 = Color3.fromRGB(255, 255, 255)
+btnTeleportLoot.TextScaled = true
+btnTeleportLoot.Parent = mainFrame
+btnTeleportLoot.MouseButton1Click:Connect(function()
+    teleportToLoot()
+end)
+
+-- Nút Speed (Tăng tốc)
+local btnSpeed = Instance.new("TextButton")
+btnSpeed.Size = UDim2.new(0.9, 0, 0, 30)
+btnSpeed.Position = UDim2.new(0.05, 0, 0.8, 5)
+btnSpeed.BackgroundColor3 = Color3.fromRGB(60, 60, 80)
+btnSpeed.Text = "Speed: 50 / 80"
+btnSpeed.TextColor3 = Color3.fromRGB(255, 255, 255)
+btnSpeed.TextScaled = true
+btnSpeed.Parent = mainFrame
+btnSpeed.MouseButton1Click:Connect(function()
+    setSpeed(50, 80)
+    btnSpeed.Text = "Speed Set: 50 / 80"
+end)
+
+-- =============================================
+-- 11. TỰ ĐỘNG KHỞI TẠO CÁC TÍNH NĂNG CƠ BẢN
+-- =============================================
+-- Khởi chạy script với GUI đã hiển thị
+print("Blox Loot Hack loaded successfully!")
+print("Press F1 to toggle GUI (if hidden)")
+
+-- =============================================
+-- THAM KHẢO:
+-- Nguồn: ScriptBlox, GitHub (DRX HUB, XSCRIPT)
+-- Phiên bản: V7/V11 Blox Loot
+-- =============================================
