@@ -1,6 +1,6 @@
 --[[
-    SIMPLE SPY V15 - THU NHỎ KÍCH THƯỚC GIAO DIỆN (COMPACT EDITION)
-    Chức năng: Thu gọn diện tích hiển thị, tối ưu không gian màn hình.
+    SIMPLE SPY V15.2 - PHIÊN BẢN VƯỢT LỌC (ANTI-BYPASS & COMPACT)
+    Cơ chế: Kết hợp song song Metamethod Hook + Index Function Hook + Dynamic Scan
 --]]
 
 local Players = game:GetService("Players")
@@ -16,7 +16,7 @@ ScreenGui.Name = "SimpleSpy_CompactViewer"
 ScreenGui.ResetOnSpawn = false
 ScreenGui.Parent = PlayerGui
 
--- KHUNG BẢNG ĐIỀU KHIỂN CHÍNH (ĐÃ THU NHỎ: 240x260)
+-- GIAO DIỆN CHÍNH (GIỮ NGUYÊN KÍCH THƯỚC THU NHỎ)
 local MainFrame = Instance.new("Frame")
 MainFrame.Name = "MainFrame"
 MainFrame.Size = UDim2.new(0, 240, 0, 260)
@@ -31,14 +31,13 @@ MainFrame.Parent = ScreenGui
 local Title = Instance.new("TextLabel")
 Title.Size = UDim2.new(1, 0, 0, 28)
 Title.BackgroundColor3 = Color3.fromRGB(32, 33, 38)
-Title.Text = "  REMOTES LOG"
+Title.Text = "  REMOTES LOG (V15.2)"
 Title.TextColor3 = Color3.fromRGB(255, 170, 0)
 Title.Font = Enum.Font.ArialBold
 Title.TextSize = 11
 Title.TextXAlignment = Enum.TextXAlignment.Left
 Title.Parent = MainFrame
 
--- KHUNG HIỂN THỊ CODE (ĐÃ THU NHỎ: 320x260)
 local CodeFrame = Instance.new("Frame")
 CodeFrame.Name = "CodeFrame"
 CodeFrame.Size = UDim2.new(0, 320, 0, 260)
@@ -109,6 +108,7 @@ end)
 local capturedRemotes = {}
 local activeUIButtons = {}
 
+-- LOGIC XỬ LÝ SERIALIZE DỮ LIỆU
 local function serializeValue(val, depth)
     depth = depth or 1
     local indent = string.rep("    ", depth)
@@ -119,7 +119,9 @@ local function serializeValue(val, depth)
     elseif t == "Vector2" then return string.format("Vector2.new(%f, %f)", val.X, val.Y)
     elseif t == "CFrame" then return string.format("CFrame.new(%s)", tostring(val))
     elseif t == "Color3" then return string.format("Color3.fromRGB(%d, %d, %d)", val.R*255, val.G*255, val.B*255)
-    elseif t == "Instance" then return "game." .. val:GetFullName()
+    elseif t == "Instance" then 
+        local success, path = pcall(function() return "game." .. val:GetFullName() end)
+        return success and path or '"[Instance bị ẩn danh/NIL]"'
     elseif t == "table" then
         local str = "{\n"
         for k, v in pairs(val) do
@@ -131,10 +133,11 @@ local function serializeValue(val, depth)
 end
 
 local function renderCodeStructure(remote, logData)
-    local path = remote:GetFullName()
-    local cleanPath = path:sub(1,5) == "game." and path or "game." .. path
-    local sb = "-- COMPACT GENERATED SCRIPT\n"
-    sb = sb .. string.format("local Remote = %s\n", cleanPath)
+    local path = "game"
+    pcall(function() path = "game." .. remote:GetFullName() end)
+    
+    local sb = "-- LOGGED CODE V15.2\n"
+    sb = sb .. string.format("local Remote = %s\n", path)
     sb = sb .. "local Args = {\n"
     if logData.args and #logData.args > 0 then
         for i, arg in ipairs(logData.args) do
@@ -153,7 +156,10 @@ local function renderCodeStructure(remote, logData)
 end
 
 local function registerOrUpdateLog(remote, method, args)
-    if not remote or not remote.Name then return end
+    if not remote then return end
+    local name = "UnknownRemote"
+    pcall(function() name = remote.Name end)
+    
     capturedRemotes[remote] = {method = method, args = args}
     if activeUIButtons[remote] then return end
 
@@ -161,7 +167,7 @@ local function registerOrUpdateLog(remote, method, args)
     LogItem.Size = UDim2.new(1, -6, 0, 24)
     LogItem.BackgroundColor3 = method == "FireServer" and Color3.fromRGB(32, 44, 36) or Color3.fromRGB(46, 32, 34)
     LogItem.BorderSizePixel = 0
-    LogItem.Text = string.format(" [%s] %s", method:sub(1,4):upper(), tostring(remote.Name))
+    LogItem.Text = string.format(" [%s] %s", method:sub(1,4):upper(), tostring(name))
     LogItem.TextColor3 = Color3.fromRGB(240, 240, 240)
     LogItem.Font = Enum.Font.Arial
     LogItem.TextSize = 11
@@ -178,16 +184,64 @@ local function registerOrUpdateLog(remote, method, args)
     end)
 end
 
+-- ==========================================
+-- BỘ LỌC HOOK ĐA TẦNG (CƠ CHẾ FIX LỖI CHÍNH)
+-- ==========================================
+
+-- Tầng 1: Khôi phục lại __namecall truyền thống
 local oldNamecall
 pcall(function()
     oldNamecall = hookmetamethod(game, "__namecall", function(self, ...)
         local method = getnamecallmethod()
         if method == "FireServer" or method == "InvokeServer" then
-            local args = {...}
-            task.defer(registerOrUpdateLog, self, method, args)
+            task.defer(registerOrUpdateLog, self, method, {...})
         end
         return oldNamecall(self, ...)
     end)
 end)
 
-print("[SimpleSpy-V15] Đã khởi chạy phiên bản giao diện thu gọn.")
+-- Tầng 2: Hook trực tiếp phương thức lưu trong __index (Giải quyết game lưu biến Local Upvalues)
+local oldIndex
+pcall(function()
+    oldIndex = hookmetamethod(game, "__index", function(self, key)
+        if key == "FireServer" or key == "InvokeServer" then
+            -- Nếu script của game cố tình lấy hàm thông qua game.Remote.FireServer
+            local originalFunc = oldIndex(self, key)
+            return function(instance, ...)
+                if instance == self then
+                    task.defer(registerOrUpdateLog, self, key, {...})
+                end
+                return originalFunc(instance, ...)
+            end
+        end
+        return oldIndex(self, key)
+    end)
+end)
+
+-- Tầng 3: Quét động thời gian thực đề phòng các Remote sinh muộn hoặc chèn vào vùng kín
+local function monitorInstance(item)
+    pcall(function()
+        if item:IsA("RemoteEvent") then
+            -- Sử dụng kịch bản can thiệp trực tiếp vào bộ lắng nghe của chính object
+            local oldFire = item.FireServer
+            item.FireServer = function(self, ...)
+                task.defer(registerOrUpdateLog, self, "FireServer", {...})
+                return oldFire(self, ...)
+            end
+        elseif item:IsA("RemoteFunction") then
+            local oldInvoke = item.InvokeServer
+            item.InvokeServer = function(self, ...)
+                task.defer(registerOrUpdateLog, self, "InvokeServer", {...})
+                return oldInvoke(self, ...)
+            end
+        end
+    end)
+end
+
+-- Kích hoạt bộ quét động trên toàn bộ các dịch vụ lưu trữ mạng mạng trong game
+for _, service in ipairs({game:GetService("ReplicatedStorage"), game:GetService("Workspace"), game:GetService("JointsService")}) do
+    for _, child in ipairs(service:GetDescendants()) do monitorInstance(child) end
+    service.DescendantAdded:Connect(monitorInstance)
+end
+
+print("[SimpleSpy-V15.2] Đã kích hoạt bản sửa lỗi chống chặn mạng đa lớp.")
