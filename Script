@@ -1,66 +1,48 @@
 --[[
-    SIMPLE SPY BYPASS V6 - THAY THẾ PHÔNG CHỮ VÀ BỔ SUNG QUÉT TỰ ĐỘNG
-    Sửa triệt để lỗi menu trống rỗng, không hiển thị chữ
+    SIMPLE SPY BYPASS V7 - TRUY VẾT MÃ NGUỒN SỰ KIỆN (REMOTE TRACEBACK)
+    Chức năng: Quét Remote và tìm ra Script nào đang gọi hoặc xử lý chúng.
 --]]
 
 local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
 local PlayerGui = LocalPlayer:WaitForChild("PlayerGui")
 
--- Xóa UI cũ nếu tồn tại để tránh đè giao diện
-if PlayerGui:FindFirstChild("SimpleSpy_Bypass_Fixed") then
-    PlayerGui:FindFirstChild("SimpleSpy_Bypass_Fixed"):Destroy()
+if PlayerGui:FindFirstChild("SimpleSpy_Traceback_Edition") then
+    PlayerGui:FindFirstChild("SimpleSpy_Traceback_Edition"):Destroy()
 end
 
--- Tạo Giao diện chính độc lập
 local ScreenGui = Instance.new("ScreenGui")
-ScreenGui.Name = "SimpleSpy_Bypass_Fixed"
+ScreenGui.Name = "SimpleSpy_Traceback_Edition"
 ScreenGui.ResetOnSpawn = false
 ScreenGui.Parent = PlayerGui
 
--- Khung chính của bảng điều khiển
 local MainFrame = Instance.new("Frame")
 MainFrame.Name = "MainFrame"
-MainFrame.Size = UDim2.new(0, 400, 0, 300)
-MainFrame.Position = UDim2.new(0.5, -200, 0.3, -150)
-MainFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
-MainFrame.BorderSizePixel = 2
-MainFrame.BorderColor3 = Color3.fromRGB(255, 0, 0) -- Viền đỏ để dễ nhận biết
+MainFrame.Size = UDim2.new(0, 420, 0, 320)
+MainFrame.Position = UDim2.new(0.5, -210, 0.3, -160)
+MainFrame.BackgroundColor3 = Color3.fromRGB(25, 25, 30)
+MainFrame.BorderSizePixel = 1
+MainFrame.BorderColor3 = Color3.fromRGB(0, 200, 255)
 MainFrame.Active = true
 MainFrame.Draggable = true
 MainFrame.Parent = ScreenGui
 
--- Tiêu đề bảng (Sử dụng Font mặc định Arial để chắc chắn hiển thị)
 local Title = Instance.new("TextLabel")
 Title.Size = UDim2.new(1, 0, 0, 35)
-Title.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
-Title.BorderSizePixel = 0
-Title.Text = "  SIMPLE SPY (VÁ LỖI HIỂN THỊ)"
-Title.TextColor3 = Color3.fromRGB(255, 255, 255)
+Title.BackgroundColor3 = Color3.fromRGB(35, 35, 40)
+Title.Text = "  SIMPLE SPY V7 - TRUY VẾT CODE SỰ KIỆN"
+Title.TextColor3 = Color3.fromRGB(0, 200, 255)
 Title.Font = Enum.Font.Arial
-Title.TextSize = 14
+Title.TextSize = 13
 Title.TextXAlignment = Enum.TextXAlignment.Left
 Title.Parent = MainFrame
 
--- Nút Quét Thủ Công (Phòng trường hợp không tự động bắt được gói tin)
-local ScanButton = Instance.new("TextButton")
-ScanButton.Size = UDim2.new(0, 100, 0, 25)
-ScanButton.Position = UDim2.new(1, -110, 0, 5)
-ScanButton.BackgroundColor3 = Color3.fromRGB(0, 150, 0)
-ScanButton.Text = "QUÉT REMOTE"
-ScanButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-ScanButton.Font = Enum.Font.Arial
-ScanButton.TextSize = 12
-ScanButton.Parent = MainFrame
-
--- Vùng cuộn chứa danh sách kết quả
 local ScrollingFrame = Instance.new("ScrollingFrame")
-ScrollingFrame.Size = UDim2.new(1, -10, 1, -45)
-ScrollingFrame.Position = UDim2.new(0, 5, 0, 40)
-ScrollingFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
-ScrollingFrame.BorderSizePixel = 0
+ScrollingFrame.Size = UDim2.new(1, -10, 1, -50)
+ScrollingFrame.Position = UDim2.new(0, 5, 0, 45)
+ScrollingFrame.BackgroundColor3 = Color3.fromRGB(15, 15, 20)
 ScrollingFrame.CanvasSize = UDim2.new(0, 0, 0, 0)
-ScrollingFrame.ScrollBarThickness = 8
+ScrollingFrame.ScrollBarThickness = 6
 ScrollingFrame.Parent = MainFrame
 
 local UIListLayout = Instance.new("UIListLayout")
@@ -71,61 +53,67 @@ UIListLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
     ScrollingFrame.CanvasSize = UDim2.new(0, 0, 0, UIListLayout.AbsoluteContentSize.Y)
 end)
 
--- Hàm hiển thị log lên màn hình
 local logCount = 0
-local function displayLog(remote, method, args)
+local function displayLogWithTraceback(remote, method, args, callingScript, traceInfo)
     if not remote or not remote.Name then return end
     logCount = logCount + 1
     
     local LogItem = Instance.new("TextButton")
     LogItem.Size = UDim2.new(1, -10, 0, 30)
-    LogItem.BackgroundColor3 = (method == "FireServer" or method == "QUÉT") and Color3.fromRGB(40, 40, 50) or Color3.fromRGB(60, 40, 40)
+    LogItem.BackgroundColor3 = Color3.fromRGB(35, 35, 45)
     LogItem.Text = string.format(" [%d] [%s] -> %s", logCount, method, tostring(remote.Name))
-    LogItem.TextColor3 = Color3.fromRGB(255, 255, 0) -- Chữ màu vàng để hiển thị rõ trên nền tối
+    LogItem.TextColor3 = Color3.fromRGB(0, 255, 150)
     LogItem.Font = Enum.Font.Arial
     LogItem.TextSize = 13
     LogItem.TextXAlignment = Enum.TextXAlignment.Left
     LogItem.Parent = ScrollingFrame
 
-    -- In dữ liệu cấu trúc ra bảng điều khiển F9 khi click vào dòng log
     LogItem.MouseButton1Click:Connect(function()
-        print(string.format("\n--- [%s] Cấu Trúc: %s ---", method, remote:GetFullName()))
+        print("\n=========================================")
+        print(string.format("REMOTE: %s", remote:GetFullName()))
+        print(string.format("PHƯƠNG THỨC: %s", method))
+        
+        -- Hiển thị script gọi lệnh
+        if callingScript then
+            print(string.format("SCRIPT KÍCH HOẠT: %s", callingScript:GetFullName()))
+        else
+            print("SCRIPT KÍCH HOẠT: Không xác định (Có thể gọi từ Core hoặc gọi ngầm)")
+        end
+        
+        -- Hiển thị chi tiết vị trí dòng code (Traceback)
+        print("\n[VỊ TRÍ DÒNG MÃ TRONG BỘ NHỚ]:")
+        print(traceInfo or "Không thể trích xuất dòng mã.")
+        
+        print("\nTHAM SỐ TRUYỀN VÀO:")
         if args and #args > 0 then
             for i, v in pairs(args) do
-                print(string.format(" Tham số %s: %s (%s)", tostring(i), tostring(v), typeof(v)))
+                print(string.format("  [%s]: %s (%s)", tostring(i), tostring(v), typeof(v)))
             end
         else
-            print(" Không có tham số đi kèm hoặc đây là quét tĩnh.")
+            print("  (Trống)")
         end
+        print("=========================================\n")
     end)
 end
 
--- Tính năng 1: Cưỡng ép quét toàn bộ các Remote đang ẩn trong bộ nhớ trò chơi
-ScanButton.MouseButton1Click:Connect(function()
-    print("[SimpleSpy] Đang tiến hành quét tĩnh hệ thống...")
-    local instances = game:GetDescendants()
-    for _, obj in ipairs(instances) do
-        pcall(function()
-            if obj:IsA("RemoteEvent") then
-                displayLog(obj, "QUÉT", {})
-            elseif obj:IsA("RemoteFunction") then
-                displayLog(obj, "QUÉT_FUNC", {})
-            end
-        end)
-    end
-end)
-
--- Tính năng 2: Chặn và bắt dữ liệu gói tin thời gian thực bằng cấu trúc lồng an toàn
+-- Tiến hành Hook metamethod hệ thống để lấy thông tin môi trường script đang chạy (Environment)
 local oldNamecall
 pcall(function()
     oldNamecall = hookmetamethod(game, "__namecall", function(self, ...)
         local method = getnamecallmethod()
         if method == "FireServer" or method == "InvokeServer" then
             local args = {...}
-            task.defer(displayLog, self, method, args)
+            
+            -- Lấy đối tượng Script đang thực hiện cuộc gọi hiện tại
+            local callingScript = getcallingscript and getcallingscript() or nil
+            
+            -- Trích xuất lịch sử ngăn xếp dòng lệnh đang chạy
+            local traceInfo = debug.traceback("Luồng thực thi mã nguồn:")
+            
+            task.defer(displayLogWithTraceback, self, method, args, callingScript, traceInfo)
         end
         return oldNamecall(self, ...)
     end)
 end)
 
-print("[SimpleSpy] Đã khởi chạy bản sửa lỗi phông chữ hoàn tất.")
+print("[SimpleSpy-V7] Hệ thống theo dõi mã nguồn sự kiện đã sẵn sàng. Nhấp vào log trên màn hình để kiểm tra cấu trúc script (F9).")
