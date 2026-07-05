@@ -1,157 +1,141 @@
--- ============================================================
--- SCRIPT GỬI REMOTE "UpdateSpeed" CHO BLOX LOOT (HOẶC GAME TƯƠNG TỰ)
--- Tác giả: Tổng hợp từ SimpleSpy
--- Mô tả: Gửi remote UpdateSpeed với tham số "Walking" để thay đổi tốc độ
--- Phím tắt: Nhấn G để gửi, nhấn F1 để bật/tắt tự động gửi khi di chuyển
--- ============================================================
+--[[
+    SIMPLE SPY BYPASS V4 (TÍCH HỢP UI TRỰC TIẾP - HOÀN TOÀN ĐỘC LẬP)
+    Khắc phục triệt để lỗi không tải được giao diện hoặc chặn HttpGet từ Blox Loot W3
+--]]
 
-if not game:IsLoaded() then game.Loaded:Wait() end
-
-local player = game.Players.LocalPlayer
-local userInput = game:GetService("UserInputService")
-local runService = game:GetService("RunService")
-local remote = game:GetService("ReplicatedStorage"):FindFirstChild("Remotes")
-if remote then
-    remote = remote:FindFirstChild("UpdateSpeed")
+-- Ngăn chặn chạy trùng lặp gây sập game
+if getgenv().SimpleSpyV4Executed then 
+    print("[SimpleSpy] Đã chạy trước đó.")
+    return 
 end
+getgenv().SimpleSpyV4Executed = true
 
-if not remote then
-    warn("Không tìm thấy Remote 'UpdateSpeed'! Kiểm tra lại đường dẫn.")
-    return
-end
+-- Tạo giao diện cơ bản ngay lập tức trong CoreGui để không phụ thuộc vào Github
+local CoreGui = game:GetService("CoreGui")
+local TweenService = game:GetService("TweenService")
 
--- ============================================================
--- CẤU HÌNH
--- ============================================================
-local CONFIG = {
-    speedType = "Walking",   -- Có thể đổi thành "Running", "Sprinting", ...
-    autoSend = false,        -- Tự động gửi khi di chuyển
-    keybind = Enum.KeyCode.G -- Phím để gửi thủ công
-}
+local ScreenGui = Instance.new("ScreenGui")
+ScreenGui.Name = "SimpleSpy_Bypass_W3"
+ScreenGui.ResetOnSpawn = false
+ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+pcall(function() ScreenGui.Parent = CoreGui end)
 
--- ============================================================
--- HÀM GỬI REMOTE
--- ============================================================
-local function sendSpeed(speedType)
-    speedType = speedType or CONFIG.speedType
-    remote:FireServer(speedType)
-    print("[Speed] Đã gửi remote với loại: " .. speedType)
-end
+-- Khung hiển thị chính
+local MainFrame = Instance.new("Frame")
+MainFrame.Name = "Main"
+MainFrame.Size = UIDimensions and UIDimensions || UDim2.new(0, 450, 0, 300)
+MainFrame.Position = UDim2.new(0.3, 0, 0.3, 0)
+MainFrame.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
+MainFrame.BorderSizePixel = 0
+MainFrame.Active = true
+MainFrame.Draggable = true -- Hỗ trợ di chuyển bảng trên màn hình
+MainFrame.Parent = ScreenGui
 
--- ============================================================
--- GỬI KHI NHẤN PHÍM (MẶC ĐỊNH PHÍM G)
--- ============================================================
-userInput.InputBegan:Connect(function(input, gameProcessed)
-    if gameProcessed then return end
-    if input.KeyCode == CONFIG.keybind then
-        sendSpeed()
-    end
+-- Tiêu đề
+local Title = Instance.new("TextLabel")
+Title.Size = UDim2.new(1, 0, 0, 30)
+Title.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
+Title.Text = "  SimpleSpy W3 Bypass Edition - [78n Core]"
+Title.TextColor3 = Color3.fromRGB(255, 255, 255)
+Title.TextXAlignment = Enum.TextXAlignment.Left
+Title.Font = Enum.Font.SourceSansBold
+Title.TextSize = 14
+Title.Parent = MainFrame
+
+-- Vùng cuộn chứa danh sách log các Remote
+local ScrollingFrame = Instance.new("ScrollingFrame")
+ScrollingFrame.Size = UDim2.new(1, -10, 1, -40)
+ScrollingFrame.Position = UDim2.new(0, 5, 0, 35)
+ScrollingFrame.BackgroundTransparency = 1
+ScrollingFrame.CanvasSize = UDim2.new(0, 0, 0, 0)
+ScrollingFrame.ScrollBarThickness = 6
+ScrollingFrame.Parent = MainFrame
+
+local UIListLayout = Instance.new("UIListLayout")
+UIListLayout.Padding = UDim.new(0, 4)
+UIListLayout.Parent = ScrollingFrame
+
+-- Tự động cập nhật kích thước vùng cuộn khi có thêm log
+UIListLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
+    ScrollingFrame.CanvasSize = UDim2.new(0, 0, 0, UIListLayout.AbsoluteContentSize.Y)
 end)
 
--- ============================================================
--- TỰ ĐỘNG GỬI KHI DI CHUYỂN (BẬT/TẮT BẰNG F1)
--- ============================================================
-local autoLoop = nil
+-- Hàm thêm bản ghi từ Remote vào UI
+local logCount = 0
+local function addLogToUI(remote, method, args)
+    logCount = logCount + 1
+    
+    local LogButton = Instance.new("TextButton")
+    LogButton.Size = UDim2.new(1, -10, 0, 25)
+    LogButton.BackgroundColor3 = method == "FireServer" and Color3.fromRGB(40, 50, 65) or Color3.fromRGB(65, 45, 45)
+    LogButton.Text = string.format(" [%d] [%s] -> %s", logCount, method, remote.Name)
+    LogButton.TextColor3 = Color3.fromRGB(230, 230, 230)
+    LogButton.Font = Enum.Font.SourceSans
+    LogButton.TextSize = 14
+    LogButton.TextXAlignment = Enum.TextXAlignment.Left
+    LogButton.Parent = ScrollingFrame
 
-local function toggleAutoSend()
-    CONFIG.autoSend = not CONFIG.autoSend
-    if CONFIG.autoSend then
-        if not autoLoop then
-            autoLoop = runService.Heartbeat:Connect(function()
-                local char = player.Character
-                if char and char:FindFirstChild("Humanoid") then
-                    local hum = char.Humanoid
-                    if hum.MoveDirection.Magnitude > 0.5 then
-                        sendSpeed()
-                    end
-                end
-            end)
+    -- Click vào dòng Log để in chi tiết tham số (arguments) ra F9 Console
+    LogButton.MouseButton1Click:Connect(function()
+        print(string.format("--- CHI TIẾT REMOTE: %s ---", remote:GetFullName()))
+        print("Phương thức:", method)
+        if #args > 0 then
+            for i, arg in ipairs(args) do
+                print(string.format("Tham số [%d]: %s (%s)", i, tostring(arg), typeof(arg)))
+            end
+        else
+            print("Tham số: Không có (Empty)")
         end
-        print("[Auto] Bật tự động gửi khi di chuyển.")
-    else
-        if autoLoop then
-            autoLoop:Disconnect()
-            autoLoop = nil
+        print("---------------------------------------")
+    end)
+    
+    -- Giới hạn số lượng hiển thị trên UI để tránh lag game (Tối đa 50 dòng)
+    local children = ScrollingFrame:GetChildren()
+    if #children > 51 then
+        for i = 1, (#children - 51) do
+            if children[i]:IsA("TextButton") then
+                children[i]:Destroy()
+            end
         end
-        print("[Auto] Tắt tự động gửi.")
     end
 end
 
-userInput.InputBegan:Connect(function(input, gameProcessed)
-    if gameProcessed then return end
-    if input.KeyCode == Enum.KeyCode.F1 then
-        toggleAutoSend()
+-- ====================================================================
+-- HỆ THỐNG HOOK NỀN CẤP THẤP (BYPASS CHẶN REMOTE TRONG BLOX LOOT)
+-- ====================================================================
+local oldFireServer
+local oldInvokeServer
+
+-- Ép ghi nhận log bất kể kịch bản bảo mật của trò chơi
+local function processLog(self, method, args)
+    if typeof(self) == "Instance" then
+        task.spawn(addLogToUI, self, method, args)
     end
+end
+
+-- Tiến hành đè (Hook) dữ liệu truyền tải của Roblox
+oldFireServer = hookfunction(Instance.new("RemoteEvent").FireServer, newcclosure(function(self, ...)
+    local args = {...}
+    processLog(self, "FireServer", args)
+    return oldFireServer(self, ...)
+end))
+
+oldInvokeServer = hookfunction(Instance.new("RemoteFunction").InvokeServer, newcclosure(function(self, ...)
+    local args = {...}
+    processLog(self, "InvokeServer", args)
+    return oldInvokeServer(self, ...)
+end))
+
+-- Hỗ trợ thêm bộ quét qua Metamethod __namecall để bắt triệt để luồng lệnh ẩn
+local oldNamecall
+oldNamecall = hookmetamethod(game, "__namecall", function(self, ...)
+    local method = getnamecallmethod()
+    local args = {...}
+    
+    if method == "FireServer" or method == "InvokeServer" then
+        processLog(self, method, args)
+    end
+    return oldNamecall(self, ...)
 end)
 
--- ============================================================
--- GUI ĐƠN GIẢN (TÙY CHỌN)
--- ============================================================
-local function createGUI()
-    local gui = Instance.new("ScreenGui")
-    gui.Name = "SpeedRemoteGUI"
-    gui.ResetOnSpawn = false
-    gui.Parent = player:WaitForChild("PlayerGui")
-    
-    local frame = Instance.new("Frame")
-    frame.Size = UDim2.new(0, 250, 0, 150)
-    frame.Position = UDim2.new(0.5, -125, 0.5, -75)
-    frame.BackgroundColor3 = Color3.fromRGB(20, 20, 30)
-    frame.BackgroundTransparency = 0.2
-    frame.BorderSizePixel = 0
-    frame.Active = true
-    frame.Draggable = true
-    frame.Parent = gui
-    
-    local title = Instance.new("TextLabel")
-    title.Size = UDim2.new(1, 0, 0, 30)
-    title.Position = UDim2.new(0, 0, 0, 0)
-    title.BackgroundColor3 = Color3.fromRGB(40, 40, 60)
-    title.Text = "Speed Remote"
-    title.TextColor3 = Color3.fromRGB(255, 255, 255)
-    title.TextScaled = true
-    title.Parent = frame
-    
-    local btnSend = Instance.new("TextButton")
-    btnSend.Size = UDim2.new(0.8, 0, 0, 30)
-    btnSend.Position = UDim2.new(0.1, 0, 0.3, 5)
-    btnSend.BackgroundColor3 = Color3.fromRGB(60, 60, 80)
-    btnSend.Text = "Gửi Speed (G)"
-    btnSend.TextColor3 = Color3.fromRGB(255, 255, 255)
-    btnSend.TextScaled = true
-    btnSend.Parent = frame
-    btnSend.MouseButton1Click:Connect(function()
-        sendSpeed()
-    end)
-    
-    local btnAuto = Instance.new("TextButton")
-    btnAuto.Size = UDim2.new(0.8, 0, 0, 30)
-    btnAuto.Position = UDim2.new(0.1, 0, 0.5, 5)
-    btnAuto.BackgroundColor3 = Color3.fromRGB(60, 60, 80)
-    btnAuto.Text = "Auto: OFF (F1)"
-    btnAuto.TextColor3 = Color3.fromRGB(255, 255, 255)
-    btnAuto.TextScaled = true
-    btnAuto.Parent = frame
-    btnAuto.MouseButton1Click:Connect(function()
-        toggleAutoSend()
-        btnAuto.Text = "Auto: " .. (CONFIG.autoSend and "ON" or "OFF")
-    end)
-    
-    -- Cập nhật trạng thái auto khi bật/tắt bằng phím
-    local oldToggle = toggleAutoSend
-    toggleAutoSend = function()
-        oldToggle()
-        btnAuto.Text = "Auto: " .. (CONFIG.autoSend and "ON" or "OFF")
-    end
-end
-
--- Tạo GUI (có thể comment dòng này nếu không muốn)
-pcall(createGUI)
-
--- ============================================================
--- THÔNG BÁO
--- ============================================================
-print("Script Speed Remote loaded!")
-print("Phím G: Gửi remote 'Walking'")
-print("Phím F1: Bật/tắt tự động gửi khi di chuyển")
-print("Có thể sửa CONFIG.speedType để đổi loại tốc độ")
+print("[SimpleSpy-W3] Khởi chạy độc lập thành công. Hãy thực hiện hành động trong game để bắt gói tin.")
