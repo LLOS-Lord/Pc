@@ -1,22 +1,22 @@
 --[[
-    SIMPLE SPY V15.5 - PHIÊN BẢN CAN THIỆP BỘ NHỚ SÂU (DEEP MEMORY HOOK)
-    Giải pháp cuối cùng cho các game ẩn phương thức hoặc chặn __namecall.
+    SIMPLE SPY V15 - THU NHỎ KÍCH THƯỚC GIAO DIỆN (COMPACT EDITION)
+    Chức năng: Thu gọn diện tích hiển thị, tối ưu không gian màn hình.
 --]]
 
 local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
 local PlayerGui = LocalPlayer:WaitForChild("PlayerGui")
 
-if PlayerGui:FindFirstChild("SimpleSpy_DeepViewer") then
-    PlayerGui:FindFirstChild("SimpleSpy_DeepViewer"):Destroy()
+if PlayerGui:FindFirstChild("SimpleSpy_CompactViewer") then
+    PlayerGui:FindFirstChild("SimpleSpy_CompactViewer"):Destroy()
 end
 
 local ScreenGui = Instance.new("ScreenGui")
-ScreenGui.Name = "SimpleSpy_DeepViewer"
+ScreenGui.Name = "SimpleSpy_CompactViewer"
 ScreenGui.ResetOnSpawn = false
 ScreenGui.Parent = PlayerGui
 
--- GIAO DIỆN SIÊU THU NHỎ
+-- KHUNG BẢNG ĐIỀU KHIỂN CHÍNH (ĐÃ THU NHỎ: 240x260)
 local MainFrame = Instance.new("Frame")
 MainFrame.Name = "MainFrame"
 MainFrame.Size = UDim2.new(0, 240, 0, 260)
@@ -31,13 +31,14 @@ MainFrame.Parent = ScreenGui
 local Title = Instance.new("TextLabel")
 Title.Size = UDim2.new(1, 0, 0, 28)
 Title.BackgroundColor3 = Color3.fromRGB(32, 33, 38)
-Title.Text = "  DEEP SPY (V15.5)"
+Title.Text = "  REMOTES LOG"
 Title.TextColor3 = Color3.fromRGB(255, 170, 0)
 Title.Font = Enum.Font.ArialBold
 Title.TextSize = 11
 Title.TextXAlignment = Enum.TextXAlignment.Left
 Title.Parent = MainFrame
 
+-- KHUNG HIỂN THỊ CODE (ĐÃ THU NHỎ: 320x260)
 local CodeFrame = Instance.new("Frame")
 CodeFrame.Name = "CodeFrame"
 CodeFrame.Size = UDim2.new(0, 320, 0, 260)
@@ -118,9 +119,7 @@ local function serializeValue(val, depth)
     elseif t == "Vector2" then return string.format("Vector2.new(%f, %f)", val.X, val.Y)
     elseif t == "CFrame" then return string.format("CFrame.new(%s)", tostring(val))
     elseif t == "Color3" then return string.format("Color3.fromRGB(%d, %d, %d)", val.R*255, val.G*255, val.B*255)
-    elseif t == "Instance" then 
-        local success, path = pcall(function() return "game." .. val:GetFullName() end)
-        return success and path or '"[Hidden/Nil Instance]"'
+    elseif t == "Instance" then return "game." .. val:GetFullName()
     elseif t == "table" then
         local str = "{\n"
         for k, v in pairs(val) do
@@ -132,10 +131,10 @@ local function serializeValue(val, depth)
 end
 
 local function renderCodeStructure(remote, logData)
-    local path = "game"
-    pcall(function() path = "game." .. remote:GetFullName() end)
-    local sb = "-- DEEP CAPTURED CODE\n"
-    sb = sb .. string.format("local Remote = %s\n", path)
+    local path = remote:GetFullName()
+    local cleanPath = path:sub(1,5) == "game." and path or "game." .. path
+    local sb = "-- COMPACT GENERATED SCRIPT\n"
+    sb = sb .. string.format("local Remote = %s\n", cleanPath)
     sb = sb .. "local Args = {\n"
     if logData.args and #logData.args > 0 then
         for i, arg in ipairs(logData.args) do
@@ -154,10 +153,7 @@ local function renderCodeStructure(remote, logData)
 end
 
 local function registerOrUpdateLog(remote, method, args)
-    if not remote then return end
-    local name = "Unknown_Remote"
-    pcall(function() name = remote.Name end)
-    
+    if not remote or not remote.Name then return end
     capturedRemotes[remote] = {method = method, args = args}
     if activeUIButtons[remote] then return end
 
@@ -165,7 +161,7 @@ local function registerOrUpdateLog(remote, method, args)
     LogItem.Size = UDim2.new(1, -6, 0, 24)
     LogItem.BackgroundColor3 = method == "FireServer" and Color3.fromRGB(32, 44, 36) or Color3.fromRGB(46, 32, 34)
     LogItem.BorderSizePixel = 0
-    LogItem.Text = string.format(" [%s] %s", method:sub(1,4):upper(), tostring(name))
+    LogItem.Text = string.format(" [%s] %s", method:sub(1,4):upper(), tostring(remote.Name))
     LogItem.TextColor3 = Color3.fromRGB(240, 240, 240)
     LogItem.Font = Enum.Font.Arial
     LogItem.TextSize = 11
@@ -182,72 +178,16 @@ local function registerOrUpdateLog(remote, method, args)
     end)
 end
 
--- ========================================================
--- CƠ CHẾ CAN THIỆP SÂU VÀO ĐỐI TƯỢNG (EXTREME INSTANCE HOOK)
--- ========================================================
-
-local hookedObjects = {}
-
-local function deepHookRemote(object)
-    if not object or hookedObjects[object] then return end
-    
-    local isEvent = object:IsA("RemoteEvent")
-    local isFunction = object:IsA("RemoteFunction")
-    
-    if isEvent or isFunction then
-        hookedObjects[object] = true
-        
-        if isEvent then
-            -- Sử dụng hookfunction để can thiệp trực tiếp vào con trỏ hàm của hệ thống trò chơi
-            local originalFire
-            pcall(function()
-                originalFire = hookfunction(object.FireServer, function(self, ...)
-                    task.defer(registerOrUpdateLog, self, "FireServer", {...})
-                    return originalFire(self, ...)
-                end)
-            end)
-        elseif isFunction then
-            local originalInvoke
-            pcall(function()
-                originalInvoke = hookfunction(object.InvokeServer, function(self, ...)
-                    task.defer(registerOrUpdateLog, self, "InvokeServer", {...})
-                    return originalInvoke(self, ...)
-                end)
-            end)
+local oldNamecall
+pcall(function()
+    oldNamecall = hookmetamethod(game, "__namecall", function(self, ...)
+        local method = getnamecallmethod()
+        if method == "FireServer" or method == "InvokeServer" then
+            local args = {...}
+            task.defer(registerOrUpdateLog, self, method, args)
         end
-    end
-end
-
--- Quét toàn bộ đối tượng hiện có trong game và liên tục cập nhật đối tượng mới
-local function runDeepScan()
-    -- Cách 1: Quét theo cấu trúc phân cấp thông thường
-    for _, obj in ipairs(game:GetDescendants()) do
-        pcall(deepHookRemote, obj)
-    end
-    
-    -- Cách 2: Quét trực tiếp trong Object Registry của Executor để tìm các thực thể bị ẩn danh
-    if getinstances then
-        for _, obj in ipairs(getinstances()) do
-            pcall(deepHookRemote, obj)
-        end
-    elseif getnilinstances then
-        for _, obj in ipairs(getnilinstances()) do
-            pcall(deepHookRemote, obj)
-        end
-    end
-end
-
--- Thực hiện quét liên tục để không bỏ sót các Remote tạo động theo thời gian thực
-task.spawn(function()
-    while true do
-        pcall(runDeepScan)
-        task.wait(2) -- Tự động quét lại sau mỗi 2 giây
-    end
+        return oldNamecall(self, ...)
+    end)
 end)
 
--- Lắng nghe sự kiện thêm mới của game
-game.DescendantAdded:Connect(function(descendant)
-    pcall(deepHookRemote, descendant)
-end)
-
-print("[SimpleSpy-V15.5] Hệ thống bẫy bộ nhớ sâu (Deep Memory Hook) đã hoạt động.")
+print("[SimpleSpy-V15] Đã khởi chạy phiên bản giao diện thu gọn.")
