@@ -1,141 +1,149 @@
 --[[
-    SIMPLE SPY BYPASS V4 (TÍCH HỢP UI TRỰC TIẾP - HOÀN TOÀN ĐỘC LẬP)
-    Khắc phục triệt để lỗi không tải được giao diện hoặc chặn HttpGet từ Blox Loot W3
+    SIMPLE SPY BYPASS V5 (SỬ DỤNG PLAYER_GUI - FIX LỖI ẨN GIAO DIỆN)
+    Hỗ trợ tất cả các dòng Executor di động và máy tính (Delta, VegaX, Wave, Fluxus)
 --]]
 
--- Ngăn chặn chạy trùng lặp gây sập game
-if getgenv().SimpleSpyV4Executed then 
-    print("[SimpleSpy] Đã chạy trước đó.")
-    return 
+local Players = game:GetService("Players")
+local LocalPlayer = Players.LocalPlayer
+
+-- Đợi cho đến khi PlayerGui của người chơi sẵn sàng để vẽ giao diện
+if not LocalPlayer:FindFirstChild("PlayerGui") then
+    local timeout = 0
+    while not LocalPlayer:FindFirstChild("PlayerGui") and timeout < 5 do
+        task.wait(0.5)
+        timeout = timeout + 0.5
+    end
 end
-getgenv().SimpleSpyV4Executed = true
 
--- Tạo giao diện cơ bản ngay lập tức trong CoreGui để không phụ thuộc vào Github
-local CoreGui = game:GetService("CoreGui")
-local TweenService = game:GetService("TweenService")
+local PlayerGui = LocalPlayer:FindFirstChild("PlayerGui")
+if not PlayerGui then
+    print("[Error] Không tìm thấy PlayerGui để hiển thị giao diện.")
+    return
+end
 
+-- Xóa phiên bản cũ nếu đã chạy trước đó để tránh xung đột
+if PlayerGui:FindFirstChild("SimpleSpy_Bypass_PlayerGui") then
+    PlayerGui:FindFirstChild("SimpleSpy_Bypass_PlayerGui"):Destroy()
+end
+
+-- Tạo UI ngay trong không gian hiển thị của người chơi (Chắc chắn lên màn hình)
 local ScreenGui = Instance.new("ScreenGui")
-ScreenGui.Name = "SimpleSpy_Bypass_W3"
+ScreenGui.Name = "SimpleSpy_Bypass_PlayerGui"
 ScreenGui.ResetOnSpawn = false
 ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
-pcall(function() ScreenGui.Parent = CoreGui end)
+ScreenGui.Parent = PlayerGui
 
--- Khung hiển thị chính
+-- Khung chứa chính (Thiết kế bo góc tối giản)
 local MainFrame = Instance.new("Frame")
 MainFrame.Name = "Main"
-MainFrame.Size = UIDimensions and UIDimensions || UDim2.new(0, 450, 0, 300)
-MainFrame.Position = UDim2.new(0.3, 0, 0.3, 0)
-MainFrame.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
-MainFrame.BorderSizePixel = 0
+MainFrame.Size = UDim2.new(0, 420, 0, 280)
+MainFrame.Position = UDim2.new(0.5, -210, 0.4, -140)
+MainFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 35)
+MainFrame.BorderSizePixel = 1
+MainFrame.BorderColor3 = Color3.fromRGB(80, 80, 90)
 MainFrame.Active = true
-MainFrame.Draggable = true -- Hỗ trợ di chuyển bảng trên màn hình
+MainFrame.Draggable = true -- Có thể giữ chuột/tay để kéo đi khắp màn hình
 MainFrame.Parent = ScreenGui
 
--- Tiêu đề
+-- Thanh tiêu đề
 local Title = Instance.new("TextLabel")
-Title.Size = UDim2.new(1, 0, 0, 30)
-Title.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
-Title.Text = "  SimpleSpy W3 Bypass Edition - [78n Core]"
-Title.TextColor3 = Color3.fromRGB(255, 255, 255)
+Title.Size = UDim2.new(1, 0, 0, 35)
+Title.BackgroundColor3 = Color3.fromRGB(40, 40, 45)
+Title.BorderSizePixel = 0
+Title.Text = "   SimpleSpy W3 (Bản Vá Lỗi Hiển Thị)"
+Title.TextColor3 = Color3.fromRGB(0, 255, 150) -- Màu xanh neon dễ nhìn
 Title.TextXAlignment = Enum.TextXAlignment.Left
-Title.Font = Enum.Font.SourceSansBold
+Title.Font = Enum.Font.Goblin -- Font chữ đậm, rõ ràng
 Title.TextSize = 14
 Title.Parent = MainFrame
 
--- Vùng cuộn chứa danh sách log các Remote
+-- Khung hiển thị danh sách gói tin
 local ScrollingFrame = Instance.new("ScrollingFrame")
-ScrollingFrame.Size = UDim2.new(1, -10, 1, -40)
-ScrollingFrame.Position = UDim2.new(0, 5, 0, 35)
+ScrollingFrame.Size = UDim2.new(1, -10, 1, -45)
+ScrollingFrame.Position = UDim2.new(0, 5, 0, 40)
 ScrollingFrame.BackgroundTransparency = 1
 ScrollingFrame.CanvasSize = UDim2.new(0, 0, 0, 0)
-ScrollingFrame.ScrollBarThickness = 6
+ScrollingFrame.ScrollBarThickness = 5
 ScrollingFrame.Parent = MainFrame
 
 local UIListLayout = Instance.new("UIListLayout")
-UIListLayout.Padding = UDim.new(0, 4)
+UIListLayout.Padding = UDim.new(0, 5)
 UIListLayout.Parent = ScrollingFrame
 
--- Tự động cập nhật kích thước vùng cuộn khi có thêm log
 UIListLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
     ScrollingFrame.CanvasSize = UDim2.new(0, 0, 0, UIListLayout.AbsoluteContentSize.Y)
 end)
 
--- Hàm thêm bản ghi từ Remote vào UI
-local logCount = 0
-local function addLogToUI(remote, method, args)
-    logCount = logCount + 1
+-- Biến đếm và xử lý Log dữ liệu
+local totalLogs = 0
+local function outputToScreen(remote, method, args)
+    if not remote or not remote.Name then return end
+    totalLogs = totalLogs + 1
     
-    local LogButton = Instance.new("TextButton")
-    LogButton.Size = UDim2.new(1, -10, 0, 25)
-    LogButton.BackgroundColor3 = method == "FireServer" and Color3.fromRGB(40, 50, 65) or Color3.fromRGB(65, 45, 45)
-    LogButton.Text = string.format(" [%d] [%s] -> %s", logCount, method, remote.Name)
-    LogButton.TextColor3 = Color3.fromRGB(230, 230, 230)
-    LogButton.Font = Enum.Font.SourceSans
-    LogButton.TextSize = 14
-    LogButton.TextXAlignment = Enum.TextXAlignment.Left
-    LogButton.Parent = ScrollingFrame
+    local Item = Instance.new("TextButton")
+    Item.Size = UDim2.new(1, -5, 0, 30)
+    Item.BackgroundColor3 = method == "FireServer" and Color3.fromRGB(45, 55, 70) or Color3.fromRGB(70, 50, 50)
+    Item.BorderSizePixel = 0
+    Item.Text = string.format(" [%d] [%s] -> %s", totalLogs, method, tostring(remote.Name))
+    Item.TextColor3 = Color3.fromRGB(255, 255, 255)
+    Item.Font = Enum.Font.SourceSansSemibold
+    Item.TextSize = 14
+    Item.TextXAlignment = Enum.TextXAlignment.Left
+    Item.Parent = ScrollingFrame
 
-    -- Click vào dòng Log để in chi tiết tham số (arguments) ra F9 Console
-    LogButton.MouseButton1Click:Connect(function()
-        print(string.format("--- CHI TIẾT REMOTE: %s ---", remote:GetFullName()))
-        print("Phương thức:", method)
-        if #args > 0 then
-            for i, arg in ipairs(args) do
-                print(string.format("Tham số [%d]: %s (%s)", i, tostring(arg), typeof(arg)))
-            end
-        else
-            print("Tham số: Không có (Empty)")
+    -- Khi nhấn vào hàng log, chi tiết tham số sẽ in ra cửa sổ F9 lập tức
+    Item.MouseButton1Click:Connect(function()
+        print("\n=== THÔNG TIN CHI TIẾT REMOTE BỊ CHẶN ===")
+        print("Tên đường dẫn:", remote:GetFullName())
+        print("Loại phương thức:", method)
+        print("Dữ liệu gửi lên:")
+        for i, v in pairs(args) do
+            print(string.format("   Tham số [%s]: %s (%s)", tostring(i), tostring(v), typeof(v)))
         end
-        print("---------------------------------------")
+        print("=========================================\n")
     end)
     
-    -- Giới hạn số lượng hiển thị trên UI để tránh lag game (Tối đa 50 dòng)
-    local children = ScrollingFrame:GetChildren()
-    if #children > 51 then
-        for i = 1, (#children - 51) do
-            if children[i]:IsA("TextButton") then
-                children[i]:Destroy()
+    -- Tự động dọn dẹp các log cũ để tránh quá tải bộ nhớ gây lag thiết bị
+    local currentLogs = ScrollingFrame:GetChildren()
+    if #currentLogs > 40 then
+        for i = 1, (#currentLogs - 40) do
+            if currentLogs[i]:IsA("TextButton") then
+                currentLogs[i]:Destroy()
             end
         end
     end
 end
 
 -- ====================================================================
--- HỆ THỐNG HOOK NỀN CẤP THẤP (BYPASS CHẶN REMOTE TRONG BLOX LOOT)
+-- BỘ LỌC HOOK AN TOÀN TRÁNH CRASH EXECUTOR
 -- ====================================================================
-local oldFireServer
-local oldInvokeServer
-
--- Ép ghi nhận log bất kể kịch bản bảo mật của trò chơi
-local function processLog(self, method, args)
-    if typeof(self) == "Instance" then
-        task.spawn(addLogToUI, self, method, args)
-    end
-end
-
--- Tiến hành đè (Hook) dữ liệu truyền tải của Roblox
-oldFireServer = hookfunction(Instance.new("RemoteEvent").FireServer, newcclosure(function(self, ...)
-    local args = {...}
-    processLog(self, "FireServer", args)
-    return oldFireServer(self, ...)
-end))
-
-oldInvokeServer = hookfunction(Instance.new("RemoteFunction").InvokeServer, newcclosure(function(self, ...)
-    local args = {...}
-    processLog(self, "InvokeServer", args)
-    return oldInvokeServer(self, ...)
-end))
-
--- Hỗ trợ thêm bộ quét qua Metamethod __namecall để bắt triệt để luồng lệnh ẩn
-local oldNamecall
-oldNamecall = hookmetamethod(game, "__namecall", function(self, ...)
-    local method = getnamecallmethod()
-    local args = {...}
-    
-    if method == "FireServer" or method == "InvokeServer" then
-        processLog(self, method, args)
-    end
-    return oldNamecall(self, ...)
+local successHook, oldNamecall
+successHook, _ = pcall(function()
+    oldNamecall = hookmetamethod(game, "__namecall", function(self, ...)
+        local method = getnamecallmethod()
+        local args = {...}
+        if method == "FireServer" or method == "InvokeServer" then
+            task.defer(outputToScreen, self, method, args)
+        end
+        return oldNamecall(self, ...)
+    end)
 end)
 
-print("[SimpleSpy-W3] Khởi chạy độc lập thành công. Hãy thực hiện hành động trong game để bắt gói tin.")
+-- Phương pháp dự phòng 2: Nếu Metamethod lỗi, chèn trực tiếp vào hàm Instance gốc
+if not successHook or not oldNamecall then
+    pcall(function()
+        local oldFire = Instance.new("RemoteEvent").FireServer
+        hookfunction(oldFire, newcclosure(function(self, ...)
+            task.defer(outputToScreen, self, "FireServer", {...})
+            return oldFire(self, ...)
+        end))
+        
+        local oldInvoke = Instance.new("RemoteFunction").InvokeServer
+        hookfunction(oldInvoke, newcclosure(function(self, ...)
+            task.defer(outputToScreen, self, "InvokeServer", {...})
+            return oldInvoke(self, ...)
+        end))
+    end)
+end
+
+print("[SimpleSpy-V5] Đã tải thành công giao diện tại PlayerGui.")
