@@ -1,81 +1,79 @@
 --[[
-    SIMPLE SPY BYPASS V11 - TÍCH HỢP KHUNG XEM CODE TRỰC TIẾP (BUILT-IN SCRIPT VIEWER)
-    Chức năng: Hiển thị giao diện xem mã nguồn giả lập trực tiếp trên màn hình GUI mà không cần mở F9.
+    SIMPLE SPY V13 - BẢN TÁI LẬP MÃ NGUỒN CHUẨN LẬP TRÌNH (PRODUCTION-READY CODE)
+    Chức năng: Sinh mã nguồn chính xác cấu trúc tham số để copy dùng ngay cho các script bên thứ ba.
 --]]
 
 local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
 local PlayerGui = LocalPlayer:WaitForChild("PlayerGui")
 
-if PlayerGui:FindFirstChild("SimpleSpy_ScriptViewer") then
-    PlayerGui:FindFirstChild("SimpleSpy_ScriptViewer"):Destroy()
+if PlayerGui:FindFirstChild("SimpleSpy_ProductionViewer") then
+    PlayerGui:FindFirstChild("SimpleSpy_ProductionViewer"):Destroy()
 end
 
 local ScreenGui = Instance.new("ScreenGui")
-ScreenGui.Name = "SimpleSpy_ScriptViewer"
+ScreenGui.Name = "SimpleSpy_ProductionViewer"
 ScreenGui.ResetOnSpawn = false
 ScreenGui.Parent = PlayerGui
 
--- KHUNG CHÍNH (BẢNG DANH SÁCH REMOTE)
+-- KHUNG BẢNG ĐIỀU KHIỂN CHÍNH
 local MainFrame = Instance.new("Frame")
 MainFrame.Name = "MainFrame"
-MainFrame.Size = UDim2.new(0, 320, 0, 350)
-MainFrame.Position = UDim2.new(0.25, -160, 0.3, -175)
-MainFrame.BackgroundColor3 = Color3.fromRGB(24, 24, 28)
+MainFrame.Size = UDim2.new(0, 320, 0, 360)
+MainFrame.Position = UDim2.new(0.25, -160, 0.3, -180)
+MainFrame.BackgroundColor3 = Color3.fromRGB(24, 25, 28)
 MainFrame.BorderSizePixel = 1
-MainFrame.BorderColor3 = Color3.fromRGB(0, 255, 150)
+MainFrame.BorderColor3 = Color3.fromRGB(255, 170, 0)
 MainFrame.Active = true
 MainFrame.Draggable = true
 MainFrame.Parent = ScreenGui
 
 local Title = Instance.new("TextLabel")
 Title.Size = UDim2.new(1, 0, 0, 35)
-Title.BackgroundColor3 = Color3.fromRGB(32, 32, 38)
-Title.Text = "  SIMPLE SPY - REMOTES"
-Title.TextColor3 = Color3.fromRGB(0, 255, 150)
+Title.BackgroundColor3 = Color3.fromRGB(32, 33, 38)
+Title.Text = "  SIMPLE SPY - LIVE LOGS"
+Title.TextColor3 = Color3.fromRGB(255, 170, 0)
 Title.Font = Enum.Font.Arial
 Title.TextSize = 13
 Title.TextXAlignment = Enum.TextXAlignment.Left
 Title.Parent = MainFrame
 
--- KHUNG PHỤ (TRÌNH XEM CODE - SCRIPT VIEWER)
+-- KHUNG HIỂN THỊ CODE ĐỂ LẬP TRÌNH
 local CodeFrame = Instance.new("Frame")
 CodeFrame.Name = "CodeFrame"
-CodeFrame.Size = UDim2.new(0, 400, 0, 350)
-CodeFrame.Position = UDim2.new(0.25, 165, 0.3, -175) -- Đặt ngay bên cạnh MainFrame
-CodeFrame.BackgroundColor3 = Color3.fromRGB(18, 18, 22)
+CodeFrame.Size = UDim2.new(0, 440, 0, 360)
+CodeFrame.Position = UDim2.new(0.25, 165, 0.3, -180)
+CodeFrame.BackgroundColor3 = Color3.fromRGB(16, 17, 20)
 CodeFrame.BorderSizePixel = 1
-CodeFrame.BorderColor3 = Color3.fromRGB(0, 200, 255)
-CodeFrame.Parent = MainFrame -- Gắn chặt vào MainFrame để di chuyển cùng nhau
+CodeFrame.BorderColor3 = Color3.fromRGB(0, 255, 150)
+CodeFrame.Parent = MainFrame
 
 local CodeTitle = Instance.new("TextLabel")
 CodeTitle.Size = UDim2.new(1, 0, 0, 35)
-CodeTitle.BackgroundColor3 = Color3.fromRGB(26, 26, 32)
-CodeTitle.Text = "  MÃ NGUỒN GIẢ LẬP (GENERATED CODE)"
-CodeTitle.TextColor3 = Color3.fromRGB(0, 200, 255)
+CodeTitle.BackgroundColor3 = Color3.fromRGB(24, 25, 30)
+CodeTitle.Text = "  MÃ NGUỒN THỰC THI (READY-TO-USE CODE)"
+CodeTitle.TextColor3 = Color3.fromRGB(0, 255, 150)
 CodeTitle.Font = Enum.Font.Arial
 CodeTitle.TextSize = 13
 CodeTitle.TextXAlignment = Enum.TextXAlignment.Left
 CodeTitle.Parent = CodeFrame
 
--- Khung hiển thị và sao chép văn bản Code
 local CodeTextBox = Instance.new("TextBox")
 CodeTextBox.Size = UDim2.new(1, -20, 1, -55)
 CodeTextBox.Position = UDim2.new(0, 10, 0, 45)
-CodeTextBox.BackgroundColor3 = Color3.fromRGB(12, 12, 14)
+CodeTextBox.BackgroundColor3 = Color3.fromRGB(10, 11, 13)
 CodeTextBox.BorderSizePixel = 0
-CodeTextBox.Text = "-- Chọn một Remote để xem mã nguồn thực thi tại đây..."
-CodeTextBox.TextColor3 = Color3.fromRGB(200, 230, 200)
-CodeTextBox.Font = Enum.Font.Code -- Định dạng phông chữ lập trình dạng Monospace
+CodeTextBox.Text = "-- Hãy thực hiện hành động trong game để bắt gói tin.\n-- Chọn Remote để lấy mã lập trình tương ứng."
+CodeTextBox.TextColor3 = Color3.fromRGB(150, 215, 150)
+CodeTextBox.Font = Enum.Font.Code
 CodeTextBox.TextSize = 12
 CodeTextBox.TextXAlignment = Enum.TextXAlignment.Left
 CodeTextBox.TextYAlignment = Enum.TextYAlignment.Top
 CodeTextBox.ClearTextOnFocus = false
-CodeTextBox.TextEditable = false -- Ngăn chỉnh sửa nhầm, chỉ cho phép bôi đen copy
+CodeTextBox.TextEditable = false
 CodeTextBox.MultiLine = true
 CodeTextBox.Parent = CodeFrame
 
--- Vùng cuộn danh sách Remote của MainFrame
 local ScrollingFrame = Instance.new("ScrollingFrame")
 ScrollingFrame.Size = UDim2.new(1, -10, 1, -45)
 ScrollingFrame.Position = UDim2.new(0, 5, 0, 40)
@@ -92,102 +90,116 @@ UIListLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
     ScrollingFrame.CanvasSize = UDim2.new(0, 0, 0, UIListLayout.AbsoluteContentSize.Y)
 end)
 
-local remoteLogs = {}
-local uiElements = {}
+local capturedRemotes = {}
+local activeUIButtons = {}
 
-local function formatValue(val)
+-- Bộ phân tích và dịch kiểu dữ liệu sang cấu trúc chuỗi code hợp lệ
+local function serializeValue(val, depth)
+    depth = depth or 1
+    local indent = string.rep("    ", depth)
     local t = typeof(val)
-    if t == "string" then return '"' .. val .. '"'
-    elseif t == "number" or t == "boolean" then return tostring(val)
-    elseif t == "Vector3" then return string.format("Vector3.new(%f, %f, %f)", val.X, val.Y, val.Z)
-    elseif t == "CFrame" then return string.format("CFrame.new(%s)", tostring(val))
-    elseif t == "Instance" then return "game." .. val:GetFullName()
+    
+    if t == "string" then 
+        return string.format('"%s"', val)
+    elseif t == "number" or t == "boolean" then 
+        return tostring(val)
+    elseif t == "Vector3" then 
+        return string.format("Vector3.new(%f, %f, %f)", val.X, val.Y, val.Z)
+    elseif t == "Vector2" then 
+        return string.format("Vector2.new(%f, %f)", val.X, val.Y)
+    elseif t == "CFrame" then 
+        return string.format("CFrame.new(%s)", tostring(val))
+    elseif t == "Color3" then 
+        return string.format("Color3.fromRGB(%d, %d, %d)", val.R*255, val.G*255, val.B*255)
+    elseif t == "Instance" then 
+        return "game." .. val:GetFullName()
     elseif t == "table" then
         local str = "{\n"
         for k, v in pairs(val) do
-            local keyStr = typeof(k) == "number" and "" or string.format("[%s] = ", formatValue(k))
-            str = str .. "        " .. keyStr .. formatValue(v) .. ",\n"
+            local keyPart = typeof(k) == "number" and "" or string.format("[%s] = ", serializeValue(k, depth + 1))
+            str = str .. indent .. keyPart .. serializeValue(v, depth + 1) .. ",\n"
         end
-        return str .. "    }"
-    else return "nil --[[" .. t .. "]]" end
+        return str .. string.rep("    ", depth - 1) .. "}"
+    else 
+        return "nil --[[" .. t .. "]]" 
+    end
 end
 
-local function generateScriptText(remote, data)
-    local code = "[[ CODE GENERATED BY SIMPLE SPY ]]\n\n"
-    code = code .. string.format("local Remote = game:%s\n\n", remote:GetFullName():sub(6))
-    code = code .. "local Arguments = {\n"
-    if data.args and #data.args > 0 then
-        for i, arg in ipairs(data.args) do
-            code = code .. string.format("    [%d] = %s,\n", i, formatValue(arg))
+-- Hàm dựng khối code lập trình dựa trên dữ liệu thu thập
+local function renderCodeStructure(remote, logData)
+    local path = remote:GetFullName()
+    local cleanPath = path:sub(1,5) == "game." and path or "game." .. path
+    
+    local sb = "-- ĐOẠN MÃ LẬP TRÌNH ĐƯỢC KHỞI TẠO TỰ ĐỘNG\n"
+    sb = sb .. string.format("local TargetRemote = %s\n\n", cleanPath)
+    sb = sb .. "local Args = {\n"
+    
+    if logData.args and #logData.args > 0 then
+        for i, arg in ipairs(logData.args) do
+            sb = sb .. string.format("    [%d] = %s,\n", i, serializeValue(arg, 2))
         end
     else
-        code = code .. "    -- Không có tham số được gửi\n"
+        sb = sb .. "    -- Không chứa tham số truyền tải\n"
     end
-    code = code .. "}\n\n"
-    if data.method == "FireServer" then
-        code = code .. "Remote:FireServer(unpack(Arguments))"
+    sb = sb .. "}\n\n"
+    
+    if logData.method == "FireServer" then
+        sb = sb .. "TargetRemote:FireServer(unpack(Args))\n"
     else
-        code = code .. "local success, response = pcall(function()\n"
-        code = code .. "    return Remote:InvokeServer(unpack(Arguments))\n"
-        code = code .. "end)\n"
-        code = code .. "print('Response:', response)"
+        sb = sb .. "local success, result = pcall(function()\n"
+        sb = sb .. "    return TargetRemote:InvokeServer(unpack(Args))\n"
+        sb = sb .. "end)\n\n"
+        sb = sb .. "if success then\n"
+        sb = sb .. "    print(\"Gọi hàm thành công, phản hồi từ server:\", result)\n"
+        sb = sb .. "else\n"
+        sb = sb .. "    warn(\"Lỗi thực thi lệnh:\", result)\n"
+        sb = sb .. "end\n"
     end
-    return code
+    return sb
 end
 
-local function updateRemoteUI(remote, method, args)
+local function registerOrUpdateLog(remote, method, args)
     if not remote or not remote.Name then return end
     
-    remoteLogs[remote] = {method = method, args = args}
+    capturedRemotes[remote] = {
+        method = method,
+        args = args
+    }
     
-    if uiElements[remote] then return end
+    if activeUIButtons[remote] then return end
 
     local LogItem = Instance.new("TextButton")
     LogItem.Size = UDim2.new(1, -10, 0, 30)
-    LogItem.BackgroundColor3 = method == "FireServer" and Color3.fromRGB(30, 42, 35) or Color3.fromRGB(42, 30, 35)
+    LogItem.BackgroundColor3 = method == "FireServer" and Color3.fromRGB(32, 44, 36) or Color3.fromRGB(46, 32, 34)
     LogItem.BorderSizePixel = 0
     LogItem.Text = string.format(" [%s] %s", method:sub(1,4):upper(), tostring(remote.Name))
-    LogItem.TextColor3 = Color3.fromRGB(240, 240, 240)
+    LogItem.TextColor3 = Color3.fromRGB(245, 245, 245)
     LogItem.Font = Enum.Font.Arial
     LogItem.TextSize = 12
     LogItem.TextXAlignment = Enum.TextXAlignment.Left
     LogItem.Parent = ScrollingFrame
     
-    uiElements[remote] = LogItem
+    activeUIButtons[remote] = LogItem
 
     LogItem.MouseButton1Click:Connect(function()
-        local data = remoteLogs[remote]
-        if data then
-            -- Tạo mã nguồn giả lập và nạp trực tiếp vào ô văn bản trên UI
-            CodeTextBox.Text = generateScriptText(remote, data)
+        local currentData = capturedRemotes[remote]
+        if currentData then
+            CodeTextBox.Text = renderCodeStructure(remote, currentData)
         end
     end)
 end
 
--- Bộ quét tĩnh đồng bộ danh sách ban đầu
-task.spawn(function()
-    local pathways = {game:GetService("ReplicatedStorage"), game:GetService("Workspace")}
-    for _, path in ipairs(pathways) do
-        pcall(function()
-            for _, item in ipairs(path:GetDescendants()) do
-                if item:IsA("RemoteEvent") then updateRemoteUI(item, "FireServer", {})
-                elseif item:IsA("RemoteFunction") then updateRemoteUI(item, "InvokeServer", {}) end
-            end
-        end)
-    end
-end)
-
--- Trình chặn thời gian thực cập nhật đối số chính xác khi nhấn nút/thao tác game
+-- Bộ lọc Metamethod __namecall để tự động cập nhật code chính xác khi người chơi bấm nút/thao tác
 local oldNamecall
 pcall(function()
     oldNamecall = hookmetamethod(game, "__namecall", function(self, ...)
         local method = getnamecallmethod()
         if method == "FireServer" or method == "InvokeServer" then
             local args = {...}
-            task.defer(updateRemoteUI, self, method, args)
+            task.defer(registerOrUpdateLog, self, method, args)
         end
         return oldNamecall(self, ...)
     end)
 end)
 
-print("[SimpleSpy-V11] Trình xem mã nguồn trực tiếp trên menu đã sẵn sàng thực thi.")
+print("[SimpleSpy-V13] Cấu hình trích xuất mã lập trình thời gian thực đã hoạt động.")
