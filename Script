@@ -1,26 +1,26 @@
 --[[
-    SIMPLE SPY V13 - BẢN TÁI LẬP MÃ NGUỒN CHUẨN LẬP TRÌNH (PRODUCTION-READY CODE)
-    Chức năng: Sinh mã nguồn chính xác cấu trúc tham số để copy dùng ngay cho các script bên thứ ba.
+    SIMPLE SPY V14 - KHUNG CODE TỰ ĐỘNG ẨN/HIỆN & NÚT ĐÓNG CHỦ ĐỘNG
+    Chức năng: Chỉ hiện khung code khi chọn Remote, có nút ẩn menu sau khi lấy code.
 --]]
 
 local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
 local PlayerGui = LocalPlayer:WaitForChild("PlayerGui")
 
-if PlayerGui:FindFirstChild("SimpleSpy_ProductionViewer") then
-    PlayerGui:FindFirstChild("SimpleSpy_ProductionViewer"):Destroy()
+if PlayerGui:FindFirstChild("SimpleSpy_DynamicViewer") then
+    PlayerGui:FindFirstChild("SimpleSpy_DynamicViewer"):Destroy()
 end
 
 local ScreenGui = Instance.new("ScreenGui")
-ScreenGui.Name = "SimpleSpy_ProductionViewer"
+ScreenGui.Name = "SimpleSpy_DynamicViewer"
 ScreenGui.ResetOnSpawn = false
 ScreenGui.Parent = PlayerGui
 
--- KHUNG BẢNG ĐIỀU KHIỂN CHÍNH
+-- KHUNG BẢNG ĐIỀU KHIỂN CHÍNH (DANH SÁCH REMOTE)
 local MainFrame = Instance.new("Frame")
 MainFrame.Name = "MainFrame"
 MainFrame.Size = UDim2.new(0, 320, 0, 360)
-MainFrame.Position = UDim2.new(0.25, -160, 0.3, -180)
+MainFrame.Position = UDim2.new(0.3, -160, 0.4, -180)
 MainFrame.BackgroundColor3 = Color3.fromRGB(24, 25, 28)
 MainFrame.BorderSizePixel = 1
 MainFrame.BorderColor3 = Color3.fromRGB(255, 170, 0)
@@ -31,25 +31,26 @@ MainFrame.Parent = ScreenGui
 local Title = Instance.new("TextLabel")
 Title.Size = UDim2.new(1, 0, 0, 35)
 Title.BackgroundColor3 = Color3.fromRGB(32, 33, 38)
-Title.Text = "  SIMPLE SPY - LIVE LOGS"
+Title.Text = "  SIMPLE SPY - REMOTES"
 Title.TextColor3 = Color3.fromRGB(255, 170, 0)
 Title.Font = Enum.Font.Arial
 Title.TextSize = 13
 Title.TextXAlignment = Enum.TextXAlignment.Left
 Title.Parent = MainFrame
 
--- KHUNG HIỂN THỊ CODE ĐỂ LẬP TRÌNH
+-- KHUNG HIỂN THỊ CODE (MẶC ĐỊNH ẨN - VISIBLE = FALSE)
 local CodeFrame = Instance.new("Frame")
 CodeFrame.Name = "CodeFrame"
 CodeFrame.Size = UDim2.new(0, 440, 0, 360)
-CodeFrame.Position = UDim2.new(0.25, 165, 0.3, -180)
+CodeFrame.Position = UDim2.new(1, 10, 0, 0) -- Gắn bên phải MainFrame
 CodeFrame.BackgroundColor3 = Color3.fromRGB(16, 17, 20)
 CodeFrame.BorderSizePixel = 1
 CodeFrame.BorderColor3 = Color3.fromRGB(0, 255, 150)
+CodeFrame.Visible = false -- Khởi tạo ở trạng thái ẩn hoàn toàn
 CodeFrame.Parent = MainFrame
 
 local CodeTitle = Instance.new("TextLabel")
-CodeTitle.Size = UDim2.new(1, 0, 0, 35)
+CodeTitle.Size = UDim2.new(1, -40, 0, 35)
 CodeTitle.BackgroundColor3 = Color3.fromRGB(24, 25, 30)
 CodeTitle.Text = "  MÃ NGUỒN THỰC THI (READY-TO-USE CODE)"
 CodeTitle.TextColor3 = Color3.fromRGB(0, 255, 150)
@@ -58,12 +59,29 @@ CodeTitle.TextSize = 13
 CodeTitle.TextXAlignment = Enum.TextXAlignment.Left
 CodeTitle.Parent = CodeFrame
 
+-- NÚT BẤM ẨN MENU CODE (CLOSE BUTTON)
+local CloseCodeButton = Instance.new("TextButton")
+CloseCodeButton.Size = UDim2.new(0, 35, 0, 35)
+CloseCodeButton.Position = UDim2.new(1, -35, 0, 0)
+CloseCodeButton.BackgroundColor3 = Color3.fromRGB(180, 40, 40)
+CloseCodeButton.BorderSizePixel = 0
+CloseCodeButton.Text = "X"
+CloseCodeButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+CloseCodeButton.Font = Enum.Font.Arial
+CloseCodeButton.TextSize = 14
+CloseCodeButton.Parent = CodeFrame
+
+-- Thao tác xử lý ẩn khung code khi click nút X
+CloseCodeButton.MouseButton1Click:Connect(function()
+    CodeFrame.Visible = false
+end)
+
 local CodeTextBox = Instance.new("TextBox")
 CodeTextBox.Size = UDim2.new(1, -20, 1, -55)
 CodeTextBox.Position = UDim2.new(0, 10, 0, 45)
 CodeTextBox.BackgroundColor3 = Color3.fromRGB(10, 11, 13)
 CodeTextBox.BorderSizePixel = 0
-CodeTextBox.Text = "-- Hãy thực hiện hành động trong game để bắt gói tin.\n-- Chọn Remote để lấy mã lập trình tương ứng."
+CodeTextBox.Text = ""
 CodeTextBox.TextColor3 = Color3.fromRGB(150, 215, 150)
 CodeTextBox.Font = Enum.Font.Code
 CodeTextBox.TextSize = 12
@@ -93,7 +111,6 @@ end)
 local capturedRemotes = {}
 local activeUIButtons = {}
 
--- Bộ phân tích và dịch kiểu dữ liệu sang cấu trúc chuỗi code hợp lệ
 local function serializeValue(val, depth)
     depth = depth or 1
     local indent = string.rep("    ", depth)
@@ -125,12 +142,11 @@ local function serializeValue(val, depth)
     end
 end
 
--- Hàm dựng khối code lập trình dựa trên dữ liệu thu thập
 local function renderCodeStructure(remote, logData)
     local path = remote:GetFullName()
     local cleanPath = path:sub(1,5) == "game." and path or "game." .. path
     
-    local sb = "-- ĐOẠN MÃ LẬP TRÌNH ĐƯỢC KHỞI TẠO TỰ ĐỘNG\n"
+    local sb = "-- MÃ NGUỒN CHUẨN ĐƯỢC TRÍCH XUẤT THỜI GIAN THỰC\n"
     sb = sb .. string.format("local TargetRemote = %s\n\n", cleanPath)
     sb = sb .. "local Args = {\n"
     
@@ -150,7 +166,7 @@ local function renderCodeStructure(remote, logData)
         sb = sb .. "    return TargetRemote:InvokeServer(unpack(Args))\n"
         sb = sb .. "end)\n\n"
         sb = sb .. "if success then\n"
-        sb = sb .. "    print(\"Gọi hàm thành công, phản hồi từ server:\", result)\n"
+        sb = sb .. "    print(\"Phản hồi từ server:\", result)\n"
         sb = sb .. "else\n"
         sb = sb .. "    warn(\"Lỗi thực thi lệnh:\", result)\n"
         sb = sb .. "end\n"
@@ -181,15 +197,17 @@ local function registerOrUpdateLog(remote, method, args)
     
     activeUIButtons[remote] = LogItem
 
+    -- Chỉ khi click vào dòng item này, khung code mới hiển thị và nạp mã
     LogItem.MouseButton1Click:Connect(function()
         local currentData = capturedRemotes[remote]
         if currentData then
             CodeTextBox.Text = renderCodeStructure(remote, currentData)
+            CodeFrame.Visible = true -- Kích hoạt hiển thị khung code
         end
     end)
 end
 
--- Bộ lọc Metamethod __namecall để tự động cập nhật code chính xác khi người chơi bấm nút/thao tác
+-- Hook hệ thống xử lý __namecall thời gian thực
 local oldNamecall
 pcall(function()
     oldNamecall = hookmetamethod(game, "__namecall", function(self, ...)
@@ -202,4 +220,4 @@ pcall(function()
     end)
 end)
 
-print("[SimpleSpy-V13] Cấu hình trích xuất mã lập trình thời gian thực đã hoạt động.")
+print("[SimpleSpy-V14] Đã hoàn tất thiết lập thuộc tính ẩn/hiện động.")
