@@ -1,26 +1,26 @@
 --[[
-    SIMPLE SPY V14 - KHUNG CODE TỰ ĐỘNG ẨN/HIỆN & NÚT ĐÓNG CHỦ ĐỘNG
-    Chức năng: Chỉ hiện khung code khi chọn Remote, có nút ẩn menu sau khi lấy code.
+    SIMPLE SPY V15 - THU NHỎ KÍCH THƯỚC GIAO DIỆN (COMPACT EDITION)
+    Chức năng: Thu gọn diện tích hiển thị, tối ưu không gian màn hình.
 --]]
 
 local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
 local PlayerGui = LocalPlayer:WaitForChild("PlayerGui")
 
-if PlayerGui:FindFirstChild("SimpleSpy_DynamicViewer") then
-    PlayerGui:FindFirstChild("SimpleSpy_DynamicViewer"):Destroy()
+if PlayerGui:FindFirstChild("SimpleSpy_CompactViewer") then
+    PlayerGui:FindFirstChild("SimpleSpy_CompactViewer"):Destroy()
 end
 
 local ScreenGui = Instance.new("ScreenGui")
-ScreenGui.Name = "SimpleSpy_DynamicViewer"
+ScreenGui.Name = "SimpleSpy_CompactViewer"
 ScreenGui.ResetOnSpawn = false
 ScreenGui.Parent = PlayerGui
 
--- KHUNG BẢNG ĐIỀU KHIỂN CHÍNH (DANH SÁCH REMOTE)
+-- KHUNG BẢNG ĐIỀU KHIỂN CHÍNH (ĐÃ THU NHỎ: 240x260)
 local MainFrame = Instance.new("Frame")
 MainFrame.Name = "MainFrame"
-MainFrame.Size = UDim2.new(0, 320, 0, 360)
-MainFrame.Position = UDim2.new(0.3, -160, 0.4, -180)
+MainFrame.Size = UDim2.new(0, 240, 0, 260)
+MainFrame.Position = UDim2.new(0.15, 0, 0.3, 0)
 MainFrame.BackgroundColor3 = Color3.fromRGB(24, 25, 28)
 MainFrame.BorderSizePixel = 1
 MainFrame.BorderColor3 = Color3.fromRGB(255, 170, 0)
@@ -29,62 +29,60 @@ MainFrame.Draggable = true
 MainFrame.Parent = ScreenGui
 
 local Title = Instance.new("TextLabel")
-Title.Size = UDim2.new(1, 0, 0, 35)
+Title.Size = UDim2.new(1, 0, 0, 28)
 Title.BackgroundColor3 = Color3.fromRGB(32, 33, 38)
-Title.Text = "  SIMPLE SPY - REMOTES"
+Title.Text = "  REMOTES LOG"
 Title.TextColor3 = Color3.fromRGB(255, 170, 0)
-Title.Font = Enum.Font.Arial
-Title.TextSize = 13
+Title.Font = Enum.Font.ArialBold
+Title.TextSize = 11
 Title.TextXAlignment = Enum.TextXAlignment.Left
 Title.Parent = MainFrame
 
--- KHUNG HIỂN THỊ CODE (MẶC ĐỊNH ẨN - VISIBLE = FALSE)
+-- KHUNG HIỂN THỊ CODE (ĐÃ THU NHỎ: 320x260)
 local CodeFrame = Instance.new("Frame")
 CodeFrame.Name = "CodeFrame"
-CodeFrame.Size = UDim2.new(0, 440, 0, 360)
-CodeFrame.Position = UDim2.new(1, 10, 0, 0) -- Gắn bên phải MainFrame
+CodeFrame.Size = UDim2.new(0, 320, 0, 260)
+CodeFrame.Position = UDim2.new(1, 5, 0, 0)
 CodeFrame.BackgroundColor3 = Color3.fromRGB(16, 17, 20)
 CodeFrame.BorderSizePixel = 1
 CodeFrame.BorderColor3 = Color3.fromRGB(0, 255, 150)
-CodeFrame.Visible = false -- Khởi tạo ở trạng thái ẩn hoàn toàn
+CodeFrame.Visible = false
 CodeFrame.Parent = MainFrame
 
 local CodeTitle = Instance.new("TextLabel")
-CodeTitle.Size = UDim2.new(1, -40, 0, 35)
+CodeTitle.Size = UDim2.new(1, -30, 0, 28)
 CodeTitle.BackgroundColor3 = Color3.fromRGB(24, 25, 30)
-CodeTitle.Text = "  MÃ NGUỒN THỰC THI (READY-TO-USE CODE)"
+CodeTitle.Text = "  CODE GENERATED"
 CodeTitle.TextColor3 = Color3.fromRGB(0, 255, 150)
-CodeTitle.Font = Enum.Font.Arial
-CodeTitle.TextSize = 13
+CodeTitle.Font = Enum.Font.ArialBold
+CodeTitle.TextSize = 11
 CodeTitle.TextXAlignment = Enum.TextXAlignment.Left
 CodeTitle.Parent = CodeFrame
 
--- NÚT BẤM ẨN MENU CODE (CLOSE BUTTON)
 local CloseCodeButton = Instance.new("TextButton")
-CloseCodeButton.Size = UDim2.new(0, 35, 0, 35)
-CloseCodeButton.Position = UDim2.new(1, -35, 0, 0)
+CloseCodeButton.Size = UDim2.new(0, 28, 0, 28)
+CloseCodeButton.Position = UDim2.new(1, -28, 0, 0)
 CloseCodeButton.BackgroundColor3 = Color3.fromRGB(180, 40, 40)
 CloseCodeButton.BorderSizePixel = 0
 CloseCodeButton.Text = "X"
 CloseCodeButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-CloseCodeButton.Font = Enum.Font.Arial
-CloseCodeButton.TextSize = 14
+CloseCodeButton.Font = Enum.Font.ArialBold
+CloseCodeButton.TextSize = 12
 CloseCodeButton.Parent = CodeFrame
 
--- Thao tác xử lý ẩn khung code khi click nút X
 CloseCodeButton.MouseButton1Click:Connect(function()
     CodeFrame.Visible = false
 end)
 
 local CodeTextBox = Instance.new("TextBox")
-CodeTextBox.Size = UDim2.new(1, -20, 1, -55)
-CodeTextBox.Position = UDim2.new(0, 10, 0, 45)
+CodeTextBox.Size = UDim2.new(1, -12, 1, -40)
+CodeTextBox.Position = UDim2.new(0, 6, 0, 34)
 CodeTextBox.BackgroundColor3 = Color3.fromRGB(10, 11, 13)
 CodeTextBox.BorderSizePixel = 0
 CodeTextBox.Text = ""
 CodeTextBox.TextColor3 = Color3.fromRGB(150, 215, 150)
 CodeTextBox.Font = Enum.Font.Code
-CodeTextBox.TextSize = 12
+CodeTextBox.TextSize = 11
 CodeTextBox.TextXAlignment = Enum.TextXAlignment.Left
 CodeTextBox.TextYAlignment = Enum.TextYAlignment.Top
 CodeTextBox.ClearTextOnFocus = false
@@ -93,15 +91,15 @@ CodeTextBox.MultiLine = true
 CodeTextBox.Parent = CodeFrame
 
 local ScrollingFrame = Instance.new("ScrollingFrame")
-ScrollingFrame.Size = UDim2.new(1, -10, 1, -45)
-ScrollingFrame.Position = UDim2.new(0, 5, 0, 40)
+ScrollingFrame.Size = UDim2.new(1, -6, 1, -34)
+ScrollingFrame.Position = UDim2.new(0, 3, 0, 31)
 ScrollingFrame.BackgroundTransparency = 1
 ScrollingFrame.CanvasSize = UDim2.new(0, 0, 0, 0)
-ScrollingFrame.ScrollBarThickness = 6
+ScrollingFrame.ScrollBarThickness = 4
 ScrollingFrame.Parent = MainFrame
 
 local UIListLayout = Instance.new("UIListLayout")
-UIListLayout.Padding = UDim.new(0, 4)
+UIListLayout.Padding = UDim.new(0, 3)
 UIListLayout.Parent = ScrollingFrame
 
 UIListLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
@@ -115,21 +113,13 @@ local function serializeValue(val, depth)
     depth = depth or 1
     local indent = string.rep("    ", depth)
     local t = typeof(val)
-    
-    if t == "string" then 
-        return string.format('"%s"', val)
-    elseif t == "number" or t == "boolean" then 
-        return tostring(val)
-    elseif t == "Vector3" then 
-        return string.format("Vector3.new(%f, %f, %f)", val.X, val.Y, val.Z)
-    elseif t == "Vector2" then 
-        return string.format("Vector2.new(%f, %f)", val.X, val.Y)
-    elseif t == "CFrame" then 
-        return string.format("CFrame.new(%s)", tostring(val))
-    elseif t == "Color3" then 
-        return string.format("Color3.fromRGB(%d, %d, %d)", val.R*255, val.G*255, val.B*255)
-    elseif t == "Instance" then 
-        return "game." .. val:GetFullName()
+    if t == "string" then return string.format('"%s"', val)
+    elseif t == "number" or t == "boolean" then return tostring(val)
+    elseif t == "Vector3" then return string.format("Vector3.new(%f, %f, %f)", val.X, val.Y, val.Z)
+    elseif t == "Vector2" then return string.format("Vector2.new(%f, %f)", val.X, val.Y)
+    elseif t == "CFrame" then return string.format("CFrame.new(%s)", tostring(val))
+    elseif t == "Color3" then return string.format("Color3.fromRGB(%d, %d, %d)", val.R*255, val.G*255, val.B*255)
+    elseif t == "Instance" then return "game." .. val:GetFullName()
     elseif t == "table" then
         local str = "{\n"
         for k, v in pairs(val) do
@@ -137,77 +127,57 @@ local function serializeValue(val, depth)
             str = str .. indent .. keyPart .. serializeValue(v, depth + 1) .. ",\n"
         end
         return str .. string.rep("    ", depth - 1) .. "}"
-    else 
-        return "nil --[[" .. t .. "]]" 
-    end
+    else return "nil" end
 end
 
 local function renderCodeStructure(remote, logData)
     local path = remote:GetFullName()
     local cleanPath = path:sub(1,5) == "game." and path or "game." .. path
-    
-    local sb = "-- MÃ NGUỒN CHUẨN ĐƯỢC TRÍCH XUẤT THỜI GIAN THỰC\n"
-    sb = sb .. string.format("local TargetRemote = %s\n\n", cleanPath)
+    local sb = "-- COMPACT GENERATED SCRIPT\n"
+    sb = sb .. string.format("local Remote = %s\n", cleanPath)
     sb = sb .. "local Args = {\n"
-    
     if logData.args and #logData.args > 0 then
         for i, arg in ipairs(logData.args) do
             sb = sb .. string.format("    [%d] = %s,\n", i, serializeValue(arg, 2))
         end
     else
-        sb = sb .. "    -- Không chứa tham số truyền tải\n"
+        sb = sb .. "    -- No args\n"
     end
-    sb = sb .. "}\n\n"
-    
+    sb = sb .. "}\n"
     if logData.method == "FireServer" then
-        sb = sb .. "TargetRemote:FireServer(unpack(Args))\n"
+        sb = sb .. "Remote:FireServer(unpack(Args))"
     else
-        sb = sb .. "local success, result = pcall(function()\n"
-        sb = sb .. "    return TargetRemote:InvokeServer(unpack(Args))\n"
-        sb = sb .. "end)\n\n"
-        sb = sb .. "if success then\n"
-        sb = sb .. "    print(\"Phản hồi từ server:\", result)\n"
-        sb = sb .. "else\n"
-        sb = sb .. "    warn(\"Lỗi thực thi lệnh:\", result)\n"
-        sb = sb .. "end\n"
+        sb = sb .. "task.spawn(function()\n    local r = Remote:InvokeServer(unpack(Args))\n    print(r)\nend)"
     end
     return sb
 end
 
 local function registerOrUpdateLog(remote, method, args)
     if not remote or not remote.Name then return end
-    
-    capturedRemotes[remote] = {
-        method = method,
-        args = args
-    }
-    
+    capturedRemotes[remote] = {method = method, args = args}
     if activeUIButtons[remote] then return end
 
     local LogItem = Instance.new("TextButton")
-    LogItem.Size = UDim2.new(1, -10, 0, 30)
+    LogItem.Size = UDim2.new(1, -6, 0, 24)
     LogItem.BackgroundColor3 = method == "FireServer" and Color3.fromRGB(32, 44, 36) or Color3.fromRGB(46, 32, 34)
     LogItem.BorderSizePixel = 0
     LogItem.Text = string.format(" [%s] %s", method:sub(1,4):upper(), tostring(remote.Name))
-    LogItem.TextColor3 = Color3.fromRGB(245, 245, 245)
+    LogItem.TextColor3 = Color3.fromRGB(240, 240, 240)
     LogItem.Font = Enum.Font.Arial
-    LogItem.TextSize = 12
+    LogItem.TextSize = 11
     LogItem.TextXAlignment = Enum.TextXAlignment.Left
     LogItem.Parent = ScrollingFrame
-    
     activeUIButtons[remote] = LogItem
 
-    -- Chỉ khi click vào dòng item này, khung code mới hiển thị và nạp mã
     LogItem.MouseButton1Click:Connect(function()
         local currentData = capturedRemotes[remote]
         if currentData then
             CodeTextBox.Text = renderCodeStructure(remote, currentData)
-            CodeFrame.Visible = true -- Kích hoạt hiển thị khung code
+            CodeFrame.Visible = true
         end
     end)
 end
 
--- Hook hệ thống xử lý __namecall thời gian thực
 local oldNamecall
 pcall(function()
     oldNamecall = hookmetamethod(game, "__namecall", function(self, ...)
@@ -220,4 +190,4 @@ pcall(function()
     end)
 end)
 
-print("[SimpleSpy-V14] Đã hoàn tất thiết lập thuộc tính ẩn/hiện động.")
+print("[SimpleSpy-V15] Đã khởi chạy phiên bản giao diện thu gọn.")
